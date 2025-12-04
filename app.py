@@ -5,6 +5,8 @@ from sentence_transformers import SentenceTransformer
 import plotly.express as px
 from umap import UMAP
 import os
+import matplotlib.pyplot as plt # Matplotlib eklendi
+from wordcloud import WordCloud # WordCloud eklendi
 
 # --- SAYFA AYARLARI ---
 st.set_page_config(page_title="My Semantic Brain", layout="wide")
@@ -141,8 +143,8 @@ if selected_tags:
     mask = filtered_df['Tags'].apply(check_tags)
     filtered_df = filtered_df[mask]
 
-# --- ANA EKRAN SEKMELERİ ---
-tab1, tab2, tab3 = st.tabs(["🔍 Liste & Arama", "🌌 Semantik Galaksi", "🛠️ Veri Yönetimi"])
+# --- ANA EKRAN SEKMELERİ (GÜNCELLENDİ: 4. TAB EKLENDİ) ---
+tab1, tab2, tab3, tab4 = st.tabs(["🔍 Liste & Arama", "🌌 Semantik Galaksi", "🛠️ Veri Yönetimi", "☁️ Analiz"])
 
 # --- TAB 1: HİBRİT ARAMA ---
 with tab1:
@@ -218,17 +220,15 @@ with tab2:
     else:
         st.write("Gösterilecek veri yok.")
 
-# --- TAB 3: VERİ YÖNETİMİ (GÜNCELLENDİ) ---
+# --- TAB 3: VERİ YÖNETİMİ ---
 with tab3:
     st.header("Veri Tabanını Düzenle")
     st.info("ℹ️ Silmek istediğiniz satırların başındaki **'Sil'** kutucuğunu işaretleyin ve **'Değişiklikleri Kaydet'** butonuna basın.")
     
     if not df.empty:
-        # Silme özelliği için 'Sil' adında geçici bir sütun ekliyoruz (False olarak başlar)
         edit_data = df.copy()
-        edit_data.insert(0, "Sil", False) # En başa ekle
+        edit_data.insert(0, "Sil", False) 
 
-        # data_editor ayarları
         edited_df = st.data_editor(
             edit_data[['Sil', 'Baslik', 'Link', 'Aciklama', 'Tags']], 
             num_rows="dynamic",
@@ -247,32 +247,81 @@ with tab3:
         if st.button("💾 Değişiklikleri Kaydet"):
             edited_df = edited_df.reset_index(drop=True)
             
-            # --- 1. SİLME İŞLEMİ ---
-            # 'Sil' kutucuğu işaretli olan satırları tespit et
             rows_to_delete = edited_df[edited_df['Sil'] == True]
-            
             if not rows_to_delete.empty:
                 st.toast(f"{len(rows_to_delete)} kayıt silindi.", icon="🗑️")
-                # Sadece Sil == False (işaretlenmemiş) olanları tutuyoruz
                 edited_df = edited_df[edited_df['Sil'] == False]
             
-            # --- 2. TEMİZLİK ---
-            # 'Sil' kolonunu veritabanına kaydetmememiz lazım, onu uçuruyoruz
             edited_df = edited_df.drop(columns=['Sil'])
             
-            # --- 3. VALIDATION ---
             has_empty_title = edited_df['Baslik'].isnull().any() or (edited_df['Baslik'].astype(str).str.strip() == '').any()
             has_empty_desc = edited_df['Aciklama'].isnull().any() or (edited_df['Aciklama'].astype(str).str.strip() == '').any()
 
             if has_empty_title or has_empty_desc:
-                st.error("❌ Hata: 'Baslik' veya 'Aciklama' alanları boş bırakılamaz! Lütfen boş satırları silin veya doldurun.")
+                st.error("❌ Hata: 'Baslik' veya 'Aciklama' alanları boş bırakılamaz!")
             else:
-                # --- 4. NORMALİZASYON ---
                 edited_df['Tags'] = edited_df['Tags'].fillna("").astype(str).apply(clean_tags)
-                
-                # --- 5. KAYIT ---
                 edited_df.to_csv(DATA_FILE, index=False)
                 st.success("✅ Veri tabanı güncellendi!")
                 st.rerun()
     else:
         st.write("Düzenlenecek veri yok.")
+
+# --- TAB 4: KELİME BULUTU & ANALİZ (YENİ) ---
+with tab4:
+    st.header("☁️ Beyninin Kelime Haritası")
+    
+    if not df.empty:
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.subheader("Etiket Bulutu")
+            # 1. Tüm tagleri tek bir metin haline getir
+            # 'ai, ses, tool' formatındaki virgülleri boşlukla değiştiriyoruz
+            all_tags_text = " ".join(df['Tags'].fillna("").astype(str))
+            all_tags_text = all_tags_text.replace(",", " ")
+
+            # 2. WordCloud oluştur
+            # background_color='black' yaparak koyu moda uyum sağlıyoruz
+            wordcloud = WordCloud(
+                width=800, height=500,
+                background_color='black',
+                colormap='viridis',
+                min_font_size=10
+            ).generate(all_tags_text)
+
+            # 3. Matplotlib ile çizdir
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.imshow(wordcloud, interpolation='bilinear')
+            ax.axis("off") # Eksenleri kapat
+            st.pyplot(fig) # Streamlit'e bas
+            plt.close(fig) # ✅ KRİTİK DÜZELTME: Memory leak önlendi
+            
+        with col2:
+            st.subheader("📊 En Sık Kullanılanlar")
+            # Tagleri ayır ve say
+            tag_series = df['Tags'].fillna("").astype(str).str.split(',').explode().str.strip()
+            # Boş olanları temizle
+            tag_series = tag_series[tag_series != ""]
+            
+            if not tag_series.empty:
+                top_tags = tag_series.value_counts().head(10).reset_index()
+                top_tags.columns = ['Etiket', 'Adet']
+                
+                # Plotly Bar Chart
+                fig_bar = px.bar(
+                    top_tags, 
+                    x='Adet', 
+                    y='Etiket', 
+                    orientation='h', # Yatay bar
+                    template="plotly_dark",
+                    color='Adet'
+                )
+                # En çok olan en üstte olsun
+                fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
+                st.plotly_chart(fig_bar, use_container_width=True)
+            else:
+                st.write("Yeterli etiket verisi yok.")
+                
+    else:
+        st.info("Analiz edilecek veri bulunamadı. Lütfen önce veri ekleyin.")
