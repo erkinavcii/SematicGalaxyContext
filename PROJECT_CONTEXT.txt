@@ -1,0 +1,404 @@
+================================================================================
+SEMANTIC GALAXY - PROJE CONTEXT VE GEREKSİNİMLER
+================================================================================
+Tarih: 2025-12-04
+Versiyon: 1.0
+
+================================================================================
+1. PROBLEM TANIMI VE FIKRIN DOĞUŞU
+================================================================================
+
+KULLANICI AÇIKLAMASI:
+"Sosyal medyada sürekli karışıma içerikler çıkıyor ve bunlara sonrasında 
+bakacağım diyip bakmayı unutuyorum sonrasında da çok içerik dolduğu için 
+buna bakmaya üşeniyorum çünkü kategorize değil mesela bir site buldum ai ile 
+alakalı otomatik site oluşturma başka bir uygulama ai ile ses üzerine başka 
+uygulama var ses ile ilgili ama ai ile alakalı değil gibi gibi ama bunları 
+direkt tag ile kategorize de edebiliriz ama aklım uçuk bir fikir geldi"
+
+FIKIR:
+"tamam güzel siteler ve bunların tag ve ilgili konu aramasıyla bana getirecek 
+bir site fikri güzel ama ben machine learning ve deep learning işe burada 
+ağ kümeleri, bulanık mantık gibi derslerde böyle birbirine benzer kümelerin 
+bir yerde kümelendiği (3 boyutlu bir ortam düşün bunlar noktalarla birbirine 
+bağlı şekilde alakalı olanlar) buna benzer bir yapı"
+
+ÖRNEK SENARYOLAR:
+- AI Site Oluşturucu ile AI Ses Uygulaması birbirine yakın durur 
+  (çünkü ikisi de "AI" içerir)
+- AI Ses Uygulaması ile Normal Ses Kayıt Uygulaması da birbirine yakın durur 
+  (çünkü ikisi de "Ses" ile ilgilidir)
+- AI Site Oluşturucu ile Normal Ses Kayıt Uygulaması birbirinden daha uzak durur
+
+GÖRSELLEŞTİRME VİZYONU:
+"Sen ekrana baktığında bir liste değil, bir yıldız kümesi (galaksi) görürsün. 
+Bir yıldıza (içeriğe) tıkladığında, ona en çok benzeyen diğer içerikler 
+(bağlı noktalar) parlar veya sana doğru yaklaşır."
+
+================================================================================
+2. KULLANIM TERCİHLERİ VE NETLEŞTİRMELER
+================================================================================
+
+DEPLOYMENT:
+- İlk geliştirme: Local (Python + Streamlit)
+- Hedef: Web/mobil erişilebilir platform
+- Neden: Çoğunlukla telefonda kaydettiği içeriklerin taglenmesi için
+
+VERİ GİRİŞİ:
+- Manuel input: Kullanıcı link veya isim + açıklama verecek
+- Otomatik scraping: İlk aşamada YOK
+- İçerik detayları: Kullanıcı kendisi sağlayacak
+
+VERİ YÖNETİMİ:
+- Yeni veri eklendiğinde: Tüm harita yeniden hesaplanabilir
+- Pozisyon değişimi: Kabul edilir, hatta daha doğru sonuç için tercih edilir
+- Performans: 1000 veriye kadar sorun olmamalı
+
+VERİ HACMİ:
+- İlk başlangıç: 20-30 kayıt
+- Beklenen büyüme: 1000'e kadar
+
+ARAMA SİSTEMİ:
+1. Tag bazlı filtreleme (klasik)
+   - Örnek: "AI + Ses" etiketli tüm içerikler
+   
+2. Semantik arama (NLP)
+   - Örnek: "müzik yapan robotlar" yazınca AI ses araçlarını bulur
+   
+3. Hybrid (ikisinin kombinasyonu)
+   - Önce tag filtresi, sonra semantic ranking
+
+================================================================================
+3. TEKNİK YAKLAŞIM (AI ÖNERİLERİ)
+================================================================================
+
+KNOWLEDGE REPRESENTATION:
+- Knowledge Graph + Vector Space Visualization birleşimi
+- Spotify'ın öneri sistemi veya Google'ın arama algoritmasına benzer mantık
+- Kişisel "Bookmark Manager" olarak 3D arayüze dökülmüş
+
+ML/NLP PİPELİNE:
+1. Embeddings (Gömme)
+   - Model: SentenceTransformers (all-MiniLM-L6-v2)
+   - Input: Description metni
+   - Output: 384 boyutlu vektör
+   
+2. Dimensionality Reduction (Boyut İndirgeme)
+   - Algoritma: UMAP (veya t-SNE)
+   - Input: 384 boyutlu vektörler
+   - Output: 3D koordinatlar (x, y, z)
+   
+3. Similarity Calculation
+   - Metrik: Cosine Similarity
+   - Amaç: İçerikler arası yakınlık hesaplama
+
+GÖRSELLEŞTİRME:
+- Faz 1: Plotly (3D Scatter Plot) - Streamlit ile entegre
+- Faz 2: Three.js (Force-Directed Graph) - Web deployment için
+- Özellikler: Zoom, rotate, hover (detay göster), renk kodlaması (tag'e göre)
+
+VERİ SAKLAMA:
+- Faz 1: JSON/CSV (basit, taşınabilir)
+- Faz 2: PostgreSQL + pgvector (vektör aramaları için optimize)
+- Graf veritabanı (Neo4j): İlk aşamada GEREKSIZ
+
+================================================================================
+4. ÖRNEK KULLANIM SENARYOLARI
+================================================================================
+
+SENARYO 1: İçerik Keşfi
+Problem: "AI ile ses değiştirme sitesi eklemiştim, buna benzer başka toollar 
+         var mı?"
+Çözüm: 
+- 3D haritada o noktaya yakın içeriklere bak
+- Veya semantic search: "ai ses araçları benzer"
+
+SENARYO 2: Tag Kombinasyonu
+Problem: "Hem AI hem Video ile ilgili toolları görmek istiyorum"
+Çözüm:
+- Liste görünümünde tag filtresi: ["AI", "Video"]
+- AND veya OR mantığı seçimi
+- Sonuçlar hem tabloda hem 3D haritada
+
+SENARYO 3: Bulanık Hatırlama
+Problem: "Video düzenlemeyle alakalı bir şey vardı ama ne olduğunu 
+         tam hatırlamıyorum"
+Çözüm:
+- Semantic search: "video editing"
+- Sistem "video", "montaj", "edit" içeren tüm içerikleri getirir
+- Similarity score'a göre sıralı
+
+================================================================================
+5. VERİ MODELİ
+================================================================================
+
+KULLANICI GİRERKEN (Manuel Input):
+- title: İçerik başlığı
+- url: Link (opsiyonel)
+- description: Açıklama (ML için kritik alan)
+- tags: Kategori etiketleri (liste)
+
+SİSTEM TARAFINDAN EKLENENLER:
+- id: Auto-increment benzersiz numara
+- date_added: Timestamp
+- embedding: 384 boyutlu vektör (ML modeli üretir)
+- umap_coords: [x, y, z] 3D koordinatlar (UMAP üretir)
+
+ÖRNEK KAYIT:
+{
+  "id": 1,
+  "title": "AI Ses Değiştirici",
+  "url": "www.siteadi.com",
+  "description": "Yapay zeka ile ses değiştirme, müzik prodüksiyonu, vokal",
+  "tags": ["AI", "Ses", "Tool"],
+  "date_added": "2025-12-04T02:16:54+03:00",
+  "embedding": [0.123, -0.456, ...],  // 384 boyut
+  "umap_coords": [1.23, -0.45, 2.67]   // x, y, z
+}
+
+================================================================================
+6. STREAMLIT ARAYÜZ TASARIMI
+================================================================================
+
+SIDEBAR (Sol Panel):
+- Yeni kayıt ekleme formu
+  * Text input: Title
+  * Text input: URL
+  * Text area: Description
+  * Multi-select: Tags
+  * Submit button
+
+ANA EKRAN (Sekmeler):
+1. SEKME: 📊 Liste Görünümü
+   - Pandas DataFrame tablosu
+   - Tag filtresi (multi-select)
+   - Sıralama özellikleri
+   
+2. SEKME: 🌌 3D Galaksi
+   - Plotly 3D Scatter plot
+   - Renk: Tag'e göre
+   - Hover: Title + Description + Tags
+   - İnteraktif: Zoom, rotate, pan
+   
+3. SEKME: 🔍 Akıllı Arama
+   - Text input: Semantik sorgu
+   - Multi-select: Tag filtresi
+   - Hybrid search sonuçları
+   - Similarity score ile sıralı liste
+
+================================================================================
+7. PERFORMANS BEKLENTİLERİ
+================================================================================
+
+1000 VERİ İÇİN HESAPLAMA SÜRELERİ:
+- Embedding oluşturma: ~2-3 saniye
+- UMAP hesaplama: ~1-2 saniye
+- Plotly render: ~0.5 saniye
+- Semantic search query: ~0.1 saniye
+TOPLAM (yeni veri ekleme): ~4-6 saniye
+
+OPTİMİZASYON STRATEJİLERİ:
+- Streamlit @st.cache_data kullanımı
+- Batch processing (5-10 veri birden)
+- UMAP random_state sabitlenmesi (aynı veri = aynı harita)
+
+================================================================================
+8. GELİŞTİRME FازLARI
+================================================================================
+
+FAZ 1: LOCAL PROTOTYPE (MVP)
+✓ Teknoloji: Python + Streamlit + Plotly
+✓ Veri: JSON dosyası
+✓ ML: sentence-transformers + UMAP
+✓ Özellikler: CRUD (create başlangıç), 3D viz, tag filter, semantic search
+
+FAZ 2: WEB DEPLOYMENT (Gelecek)
+○ Frontend: Next.js + Three.js
+○ Backend: FastAPI microservice
+○ Database: PostgreSQL + pgvector
+○ Deployment: Vercel (frontend) + Railway (backend)
+○ Özellikler: Mobile responsive, PWA, multi-user
+
+================================================================================
+9. UMAP PARAMETRELERİ VE AÇIKLAMASI
+================================================================================
+
+umap.UMAP(
+    n_components=3,        # 3D çıktı (x, y, z)
+    n_neighbors=15,        # Lokal komşuluk boyutu
+                          # ↑ artırırsan: Daha global yapı, geniş kümeler
+                          # ↓ azaltırsan: Daha lokal detaylar, küçük kümeler
+    
+    min_dist=0.1,         # Minimum nokta mesafesi
+                          # ↑ artırırsan: Noktalar dağınık
+                          # ↓ azaltırsan: Noktalar sıkışık
+    
+    metric='cosine',      # Benzerlik metriği (text için ideal)
+    random_state=42       # Tekrarlanabilirlik (opsiyonel)
+                          # Varsa: Aynı veri = aynı harita
+                          # Yoksa: Her seferinde farklı layout
+)
+
+================================================================================
+10. HYBRİD SEARCH MANTIK AKIŞI
+================================================================================
+
+KULLANICI INPUT:
+- Query text: "müzik yapan robotlar"
+- Selected tags: ["AI", "Ses"]
+
+ARAMA ALGORITMA:
+Step 1: TAG FİLTRESİ
+  filtered_data = [bookmark for bookmark in all_bookmarks 
+                   if any(tag in bookmark['tags'] for tag in selected_tags)]
+  # Sonuç: Sadece AI veya Ses etiketli kayıtlar
+
+Step 2: SEMANTİK RANKING
+  query_embedding = model.encode("müzik yapan robotlar")
+  
+  for bookmark in filtered_data:
+      similarity = cosine_similarity(query_embedding, bookmark['embedding'])
+      bookmark['score'] = similarity
+  
+  results = sorted(filtered_data, key=lambda x: x['score'], reverse=True)
+
+Step 3: SONUÇ DÖNÜŞÜ
+  # Top 10 en benzer içerik, similarity score ile birlikte
+
+================================================================================
+11. PROJE DOSYA YAPISI
+================================================================================
+
+SematicGalaxyContext/
+│
+├── data/
+│   └── bookmarks.json              # Ana veri dosyası
+│
+├── src/
+│   ├── embedding_engine.py         # SentenceTransformer + UMAP
+│   ├── data_manager.py             # JSON CRUD işlemleri
+│   └── search_engine.py            # Tag + semantic + hybrid search
+│
+├── app.py                          # Streamlit ana uygulama
+├── requirements.txt                # Python dependencies
+├── README.md                       # Kullanım kılavuzu
+├── IMPLEMENTATION_PLAN.md          # Teknik detaylar ve roadmap
+└── PROJECT_CONTEXT.txt             # Bu dosya (requirements ve açıklamalar)
+
+================================================================================
+12. GEREKLİ PYTHON KÜTÜPHANELERİ
+================================================================================
+
+# Core
+streamlit==1.30.0
+pandas==2.1.4
+
+# ML/NLP
+sentence-transformers==2.2.2
+umap-learn==0.5.5
+scikit-learn==1.3.2
+
+# Visualization
+plotly==5.18.0
+
+# Utilities
+numpy==1.26.2
+
+================================================================================
+13. İLK ÇALIŞTIRMA ADIMLARI
+================================================================================
+
+1. Virtual environment oluştur
+   python -m venv venv
+   venv\Scripts\activate  # Windows
+
+2. Bağımlılıkları yükle
+   pip install -r requirements.txt
+
+3. İlk çalıştırmada model indirilecek (~80MB)
+   - sentence-transformers/all-MiniLM-L6-v2
+   - İnternet bağlantısı gerekli
+
+4. Uygulamayı başlat
+   streamlit run app.py
+
+5. Browser'da aç
+   http://localhost:8501
+
+================================================================================
+14. GELECEKTEKİ ÖZELLIKLER (BACKLOG)
+================================================================================
+
+ÖNCELİKLİ:
+- [ ] Edit/Delete bookmark
+- [ ] Export (CSV, JSON, Markdown)
+- [ ] Import (CSV, JSON)
+- [ ] Favori işaretleme
+- [ ] Her bookmark'a not ekleme
+- [ ] Dark mode
+
+ORTA VADELİ:
+- [ ] Otomatik URL scraping
+- [ ] Browser extension (Chrome, Firefox)
+- [ ] Kategoriler (tag'lerden üst seviye)
+- [ ] Timeline view (zamana göre görselleştirme)
+
+UZUN VADELİ:
+- [ ] Web deployment
+- [ ] Multi-user support
+- [ ] Collaborative mode
+- [ ] Mobile app (React Native)
+- [ ] Auto-tagging (AI öneri)
+
+================================================================================
+15. TASARIM PRENSİPLERİ
+================================================================================
+
+PROBLEM: "Çok içerik dolduğu için bakmaya üşeniyorum çünkü kategorize değil"
+
+ÇÖZÜM PRENSİPLERİ:
+1. GÖRSELLEŞTİRME: Liste yerine uzaysal temsil
+   - İnsan beyni spatial relationships'i daha kolay işler
+   - "Nerde idi?" yerine "Neredeydi?" sorusu
+
+2. SEMANTİK İLİŞKİLER: Tag'ler yeterli değil
+   - "AI ses değiştirici" ile "Yapay zeka vokal" aynı yerde
+   - Manuel etiketleme yükünü azaltır
+
+3. KEŞİF ODEKLİ: Sadece arama değil, exploration
+   - "Buna benzer ne var?" sorusuna görsel cevap
+   - Serendipity (şansa rastlama) faktörü
+
+4. HİBRİT YAKLAŞIM: İki dünyanın en iyisi
+   - Kesin eşleşme istiyorsan: Tag filtresi
+   - Bulanık hatırlıyorsan: Semantic search
+   - İkisini birleştir: Hybrid
+
+================================================================================
+16. SONUÇ VE VİZYON
+================================================================================
+
+PROJE ADI: Semantic Galaxy
+
+TAGLINE: "Bilgini düzenle değil, keşfet"
+
+VİZYON: 
+Sosyal medyadan kaydettiğin içerikleri sadece saklamak değil, aralarındaki 
+gizli bağlantıları görecek şekilde organize etmek. Klasik klasörleme yerine,
+beyninin çalışma şekline daha yakın bir sistem.
+
+FARK:
+- Pocket/Instapaper: Liste formatında kaydetme
+- Raindrop.io: Tag ve klasör sistemi
+- Semantic Galaxy: 3D semantik ilişki ağı + akıllı arama
+
+HER KULLANICI İÇİN:
+"Kaydettiği içeriği 3 ay sonra hatırlamak isteyenler"
+"Benzer içerikleri bir arada görmek isteyenler"
+"Liste görünümünden sıkılanlar"
+"Kendi bilgi evrenini görselleştirmek isteyenler"
+
+================================================================================
+SON GÜNCELLEME: 2025-12-04T02:25:13+03:00
+DURUM: Implementation Plan hazır, kod geliştirme bekliyor
+================================================================================
