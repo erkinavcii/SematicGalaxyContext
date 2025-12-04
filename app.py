@@ -19,18 +19,16 @@ def load_model():
 model = load_model()
 
 # --- 2. YARDIMCI FONKSİYONLAR ---
+@st.cache_data
 def clean_tags(tag_input):
-    """Tagleri temizler, sıralar ve duplicate'leri uçurur."""
     tag_str = str(tag_input)
     if not tag_input or tag_str.strip() == "" or tag_str.lower() == "nan":
         return "genel"
-    
     tags = [t.strip().lower() for t in tag_str.split(',')]
     tags = sorted(list(set(tags)))
     return ", ".join(tags)
 
 def get_unique_tags(dataframe):
-    """Dataframe içindeki tüm benzersiz etiketleri listeler."""
     all_tags = set()
     if not dataframe.empty:
         for tags in dataframe['Tags'].fillna("").astype(str):
@@ -39,8 +37,8 @@ def get_unique_tags(dataframe):
     if "" in all_tags: all_tags.remove("")
     return sorted(list(all_tags))
 
+@st.cache_data
 def load_stopwords():
-    """stopwords.txt dosyasını yükler, yoksa default liste döner."""
     default_stops = {"ve", "ile", "bir", "bu", "için", "ama", "fakat", "o", "şu", "da", "de"}
     if os.path.exists("stopwords.txt"):
         try:
@@ -58,7 +56,7 @@ def load_data():
     if not os.path.exists(DATA_FILE):
         data = {
             "Baslik": ["ElevenLabs", "Midjourney", "Notion AI", "ChatGPT", "Blender"],
-            "Link": ["https://elevenlabs.io", "#", "#", "#", "#"],
+            "Link": ["https://elevenlabs.io", "https://midjourney.com", "https://notion.so", "https://chat.openai.com", "https://blender.org"],
             "Aciklama": [
                 "Yapay zeka ile ses kopyalama ve metinden ses üretme aracı.",
                 "Metinden görsel oluşturan yapay zeka sanat aracı.",
@@ -75,6 +73,7 @@ def load_data():
 df = load_data()
 
 # --- 4. VEKTÖR HESAPLAMA ---
+@st.cache_data
 def process_embeddings(dataframe):
     dataframe['Aciklama'] = dataframe['Aciklama'].fillna('')
     dataframe['Tags'] = dataframe['Tags'].fillna('')
@@ -111,7 +110,6 @@ with st.sidebar:
 
     st.header("➕ Yeni İçerik Ekle")
 
-    # --- HATA DÜZELTME & FORM TEMİZLEME MANTIĞI ---
     if st.session_state.get("data_saved", False):
         st.session_state.new_title_input = ""
         st.session_state.new_link_input = ""
@@ -123,7 +121,6 @@ with st.sidebar:
     new_link = st.text_input("Link", key="new_link_input")
     new_desc = st.text_area("Açıklama", key="new_desc_input")
     
-    # --- AUTO-TAGGING ---
     if "new_tags_input" not in st.session_state:
         st.session_state.new_tags_input = ""
 
@@ -161,48 +158,36 @@ with st.sidebar:
             new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
             
             st.session_state.data_saved = True 
-            
+            process_embeddings.clear()
+            clean_tags.clear()
             st.success(f"Eklendi!")
             st.rerun() 
         else:
             st.warning("Başlık ve Açıklama zorunludur!")
     
-    # --- YEDEKLEME (YENİ ÖZELLİK) ---
     st.divider()
     st.header("💾 Yedekleme")
     
-    # 1. İndirme (Export)
     if not df.empty:
         csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Veri Setini İndir (CSV)",
-            data=csv,
-            file_name='my_semantic_brain_backup.csv',
-            mime='text/csv',
-            help="Tüm veri tabanını bilgisayarına indir."
-        )
+        st.download_button("📥 Veri Setini İndir (CSV)", csv, 'my_semantic_brain_backup.csv', 'text/csv')
     
-    # 2. Yükleme (Import)
-    uploaded_file = st.file_uploader("📤 Yedekten Yükle (CSV)", type="csv", help="Daha önce indirdiğin yedeği geri yükle.")
+    uploaded_file = st.file_uploader("📤 Yedekten Yükle (CSV)", type="csv")
     
     if uploaded_file is not None:
         try:
-            # CSV'yi oku
             uploaded_df = pd.read_csv(uploaded_file)
-            
-            # Kolon kontrolü (Veri bozulmasını önlemek için şart)
             required_cols = ["Baslik", "Link", "Aciklama", "Tags"]
             if all(col in uploaded_df.columns for col in required_cols):
-                # Mevcut tagleri temizle ve kaydet
                 uploaded_df['Tags'] = uploaded_df['Tags'].fillna("").astype(str).apply(clean_tags)
                 uploaded_df.to_csv(DATA_FILE, index=False)
-                
-                st.success("✅ Yedek başarıyla yüklendi! Sayfa yenileniyor...")
+                process_embeddings.clear()
+                st.success("✅ Yüklendi! Yenileniyor...")
                 st.rerun()
             else:
-                st.error(f"❌ Hatalı format! CSV dosyasında şu kolonlar olmalı: {', '.join(required_cols)}")
+                st.error("❌ Hatalı CSV formatı.")
         except Exception as e:
-            st.error(f"Hata oluştu: {e}")
+            st.error(f"Hata: {e}")
 
 # --- ANA FİLTRELEME ---
 filtered_df = df.copy()
@@ -221,8 +206,16 @@ tab1, tab2, tab3, tab4 = st.tabs(["🔍 Liste & Arama", "🌌 Semantik Galaksi",
 
 with tab1:
     search_query = st.text_input("Akıllı Arama (Örn: 'Ses yapan robotlar')", "")
+    
+    if 'result_limit' not in st.session_state: st.session_state.result_limit = 10
+    if 'last_query' not in st.session_state: st.session_state.last_query = ""
+    if search_query != st.session_state.last_query:
+        st.session_state.result_limit = 10
+        st.session_state.last_query = search_query
+
     if not filtered_df.empty:
         display_df = filtered_df.copy()
+        
         if search_query:
             query_vec = model.encode([search_query])
             full_sim_scores = np.dot(embeddings, query_vec.T).flatten()
@@ -235,19 +228,31 @@ with tab1:
             msg = f"🏷️ **Seçili etiketlere ({label}) göre**" if selected_tags else "Tüm kayıtlar:"
             st.write(f"{msg} ({len(display_df)} kayıt)")
 
-        results = display_df.head(10)
+        total_results = len(display_df)
+        results = display_df.head(st.session_state.result_limit)
+        
         if not results.empty:
-            if 'Benzerlik' in results.columns:
+            if 'Benzerlik' in results.columns and search_query:
                 min_s, max_s = results['Benzerlik'].min(), results['Benzerlik'].max()
                 denom = max_s - min_s
-            for _, row in results.iterrows():
+            else:
+                denom = 1 # Hata önlemek için
+
+            for index, row in results.iterrows():
                 score_text = ""
                 if search_query and 'Benzerlik' in row:
                     sc = row['Benzerlik']
                     norm = (sc - min_s) / denom if denom != 0 else sc
                     st.progress(max(0.0, min(1.0, float(norm))))
                     score_text = f"(Skor: {sc:.2f})"
+                
+                # Standart sade görünüm
                 st.info(f"**{row['Baslik']}** {score_text} | 🏷️ {row['Tags']}\n\n{row['Aciklama']}\n\n[🔗 Git]({row['Link']})")
+
+            if st.session_state.result_limit < total_results:
+                if st.button(f"👇 Daha Fazla Göster ({st.session_state.result_limit} / {total_results})", use_container_width=True):
+                    st.session_state.result_limit += 10
+                    st.rerun()
         else:
             st.warning("Sonuç yok.")
     else:
@@ -256,7 +261,7 @@ with tab1:
 with tab2:
     if not filtered_df.empty:
         label = "VE" if use_and_logic else "VEYA"
-        msg = f"🌌 Galaksi **{', '.join(selected_tags)}** ({label}) etiketlerine odaklandı." if selected_tags else "🌌 Galaksi Görünümü"
+        msg = f"🌌 Galaksi **{', '.join(selected_tags)}** ({label})" if selected_tags else "🌌 Galaksi Görünümü"
         st.write(msg)
         fig = px.scatter_3d(
             filtered_df, x='x', y='y', z='z', color='Tags', hover_name='Baslik',
@@ -270,7 +275,7 @@ with tab2:
 
 with tab3:
     st.header("Veri Tabanını Düzenle")
-    st.info("ℹ️ Silmek için kutucuğu işaretleyip Kaydet'e basın.")
+    st.info("Silmek için kutucuğu işaretleyip Kaydet'e basın.")
     if not df.empty:
         edit_data = df.copy()
         edit_data.insert(0, "Sil", False)
@@ -295,36 +300,29 @@ with tab3:
             else:
                 edited_df['Tags'] = edited_df['Tags'].fillna("").astype(str).apply(clean_tags)
                 edited_df.to_csv(DATA_FILE, index=False)
+                process_embeddings.clear()
+                clean_tags.clear()
                 st.success("✅ Güncellendi!")
                 st.rerun()
     else:
         st.write("Veri yok.")
 
-# --- TAB 4: ANALİZ ---
 with tab4:
     st.header("☁️ İçerik Analizi")
     target_df = filtered_df if not filtered_df.empty else pd.DataFrame()
 
     if not target_df.empty:
-        analysis_type = st.radio(
-            "Analiz Kaynağı:", 
-            ["Etiketler", "Açıklamalar"], 
-            horizontal=True,
-            help="'Etiketler' genel kategorileri, 'Açıklamalar' ise içerik detaylarını analiz eder."
-        )
-        
+        analysis_type = st.radio("Analiz Kaynağı:", ["Etiketler", "Açıklamalar"], horizontal=True)
         stopwords = load_stopwords()
         words_list = []
         
         if analysis_type == "Etiketler":
             raw_series = target_df['Tags'].fillna("").astype(str).str.split(',')
             words_list = [item.strip() for sublist in raw_series for item in sublist if item.strip()]
-            
-        else: # Açıklamalar
+        else:
             full_text = " ".join(target_df['Aciklama'].fillna("").astype(str)).lower()
             for char in [".", ",", "!", "?", ":", ";", "(", ")", "\"", "'"]:
                 full_text = full_text.replace(char, " ")
-            
             raw_words = full_text.split()
             words_list = [w for w in raw_words if w not in stopwords and len(w) > 2]
 
@@ -334,39 +332,25 @@ with tab4:
             top_10 = word_counts.head(10)
 
             col1, col2 = st.columns([1, 1])
-
             with col1:
-                st.subheader("🥧 Dağılım (Pie Chart)")
-                fig_pie = px.pie(
-                    top_10, values='Frekans', names='Kelime', 
-                    title=f"En Çok Geçen {analysis_type} (Top 10)",
-                    template="plotly_dark", hole=0.4
-                )
+                st.subheader("🥧 Dağılım")
+                fig_pie = px.pie(top_10, values='Frekans', names='Kelime', template="plotly_dark", hole=0.4)
                 st.plotly_chart(fig_pie, use_container_width=True)
-
             with col2:
-                st.subheader("📊 Sıralama (Bar Chart)")
-                fig_bar = px.bar(
-                    top_10, x='Frekans', y='Kelime', orientation='h',
-                    template="plotly_dark", color='Frekans'
-                )
+                st.subheader("📊 Sıralama")
+                fig_bar = px.bar(top_10, x='Frekans', y='Kelime', orientation='h', template="plotly_dark", color='Frekans')
                 fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_bar, use_container_width=True)
 
             st.subheader(f"☁️ {analysis_type} Bulutu")
             text_for_cloud = " ".join(words_list)
-            
-            wordcloud = WordCloud(
-                width=800, height=400, background_color='black',
-                colormap='turbo', min_font_size=10
-            ).generate(text_for_cloud)
-
+            wordcloud = WordCloud(width=800, height=400, background_color='black', colormap='turbo', min_font_size=10).generate(text_for_cloud)
             fig, ax = plt.subplots(figsize=(10, 5))
             ax.imshow(wordcloud, interpolation='bilinear')
             ax.axis("off")
             st.pyplot(fig)
             plt.close(fig) 
         else:
-            st.warning("Analiz edilecek yeterli kelime bulunamadı.")
+            st.warning("Yeterli kelime yok.")
     else:
-        st.info("Analiz için veri yok veya filtreleme sonucu boş.")
+        st.info("Veri yok.")
