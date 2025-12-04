@@ -92,7 +92,7 @@ st.title("🧠 My Semantic Brain")
 
 # --- SIDEBAR (VERİ EKLEME & FİLTRELEME) ---
 with st.sidebar:
-    # --- BÖLÜM 1: FİLTRELEME (YENİ) ---
+    # --- BÖLÜM 1: FİLTRELEME ---
     st.header("🏷️ Filtrele")
     unique_tags_list = get_unique_tags(df)
     
@@ -102,7 +102,7 @@ with st.sidebar:
         placeholder="Tümünü Göster"
     )
     
-    # AND/OR Mantığı (YENİ)
+    # AND/OR Mantığı
     use_and_logic = st.checkbox("Sadece tüm etiketleri içerenleri getir (AND)", value=False)
     
     st.divider() # Çizgi çek
@@ -128,24 +128,16 @@ with st.sidebar:
             st.warning("Başlık ve Açıklama zorunludur!")
 
 # --- ANA FİLTRELEME MANTIĞI (GLOBAL) ---
-# Burası uygulamanın kalbi. Arama veya Galaksi sekmelerine gitmeden önce
-# veriyi burada daraltıyoruz.
 filtered_df = df.copy()
 
-# Eğer etiket seçildiyse DataFrame'i daralt
 if selected_tags:
     def check_tags(row_tags):
-        # Satırdaki tagleri listeye çevir
         row_tag_list = [t.strip() for t in str(row_tags).split(',')]
-        
         if use_and_logic:
-            # AND: Seçilenlerin HEPSİ satırda var mı?
             return all(tag in row_tag_list for tag in selected_tags)
         else:
-            # OR: Seçilenlerin HERHANGİ BİRİ satırda var mı?
             return any(tag in row_tag_list for tag in selected_tags)
 
-    # Fonksiyonu uygula
     mask = filtered_df['Tags'].apply(check_tags)
     filtered_df = filtered_df[mask]
 
@@ -157,42 +149,31 @@ with tab1:
     search_query = st.text_input("Akıllı Arama (Örn: 'Ses yapan robotlar')", "")
     
     if not filtered_df.empty:
-        display_df = filtered_df.copy() # Filtrelenmiş veri üzerinde çalışacağız
+        display_df = filtered_df.copy()
 
         if search_query:
-            # 1. Önce tüm (orijinal) veri için skorları hesapla
             query_vec = model.encode([search_query])
             full_sim_scores = np.dot(embeddings, query_vec.T).flatten()
-            
-            # 2. Skorları orijinal df'ye ekle
             df['Benzerlik'] = full_sim_scores
-            
-            # 3. Sonra filtrelenmiş df'ye bu skorları map et
             display_df['Benzerlik'] = df.loc[display_df.index, 'Benzerlik']
-            
-            # 4. Sırala
             display_df = display_df.sort_values(by='Benzerlik', ascending=False)
             st.write(f"**'{search_query}'** için sonuçlar ({len(display_df)} kayıt):")
         else:
-            # Arama yoksa ama filtre varsa
             if selected_tags:
                 logic_text = "VE" if use_and_logic else "VEYA"
                 st.write(f"🏷️ **Seçili etiketlere ({logic_text}) göre** sonuçlar ({len(display_df)} kayıt):")
             else:
                 st.write("Tüm kayıtlar:")
 
-        # SONUÇLARI GÖSTER (ORTAK ALAN)
-        results = display_df.head(10) # Sayfada çok yığılma olmasın diye 10 tane
+        results = display_df.head(10)
         
         if not results.empty:
-            # Progress Bar Normalizasyonu
             if 'Benzerlik' in results.columns:
                 min_score = results['Benzerlik'].min()
                 max_score = results['Benzerlik'].max()
                 denominator = max_score - min_score
 
             for index, row in results.iterrows():
-                # Skor barı sadece arama yapıldıysa anlamlıdır
                 if search_query and 'Benzerlik' in row:
                     score = row['Benzerlik']
                     if denominator == 0: normalized = score 
@@ -206,14 +187,12 @@ with tab1:
                 st.info(f"**{row['Baslik']}** {score_text} | 🏷️ {row['Tags']}\n\n{row['Aciklama']}\n\n[🔗 Git]({row['Link']})")
         else:
             st.warning("Bu kriterlere uygun sonuç bulunamadı.")
-            
     else:
         st.write("Veri yok veya filtreleme sonucu boş.")
 
 # --- TAB 2: GÖRSELLEŞTİRME ---
 with tab2:
     if not filtered_df.empty:
-        # Mesajı duruma göre değiştir
         if selected_tags:
             logic_text = "VE" if use_and_logic else "VEYA"
             st.write(f"🌌 Galaksi şu an **{', '.join(selected_tags)}** ({logic_text}) etiketlerine odaklandı.")
@@ -221,7 +200,7 @@ with tab2:
             st.write("🌌 Benzer açıklamalar ve **benzer tagler** birbirini çeker.")
             
         fig = px.scatter_3d(
-            filtered_df, # DİKKAT: Artık filtrelenmiş datayı çiziyoruz!
+            filtered_df,
             x='x', y='y', z='z',
             color='Tags', 
             hover_name='Baslik',
@@ -239,33 +218,59 @@ with tab2:
     else:
         st.write("Gösterilecek veri yok.")
 
-# --- TAB 3: VERİ YÖNETİMİ ---
+# --- TAB 3: VERİ YÖNETİMİ (GÜNCELLENDİ) ---
 with tab3:
     st.header("Veri Tabanını Düzenle")
-    st.warning("⚠️ Dikkat: Burada yaptığınız değişiklikler 'Değişiklikleri Kaydet' butonuna basınca kalıcı olur.")
+    st.info("ℹ️ Silmek istediğiniz satırların başındaki **'Sil'** kutucuğunu işaretleyin ve **'Değişiklikleri Kaydet'** butonuna basın.")
     
     if not df.empty:
+        # Silme özelliği için 'Sil' adında geçici bir sütun ekliyoruz (False olarak başlar)
+        edit_data = df.copy()
+        edit_data.insert(0, "Sil", False) # En başa ekle
+
+        # data_editor ayarları
         edited_df = st.data_editor(
-            df[['Baslik', 'Link', 'Aciklama', 'Tags']], 
+            edit_data[['Sil', 'Baslik', 'Link', 'Aciklama', 'Tags']], 
             num_rows="dynamic",
             use_container_width=True,
-            key="data_editor"
+            key="data_editor",
+            column_config={
+                "Sil": st.column_config.CheckboxColumn(
+                    "Sil?",
+                    help="Bu satırı silmek için işaretleyin",
+                    default=False,
+                    width="small"
+                )
+            }
         )
         
         if st.button("💾 Değişiklikleri Kaydet"):
             edited_df = edited_df.reset_index(drop=True)
             
-            # Validation
+            # --- 1. SİLME İŞLEMİ ---
+            # 'Sil' kutucuğu işaretli olan satırları tespit et
+            rows_to_delete = edited_df[edited_df['Sil'] == True]
+            
+            if not rows_to_delete.empty:
+                st.toast(f"{len(rows_to_delete)} kayıt silindi.", icon="🗑️")
+                # Sadece Sil == False (işaretlenmemiş) olanları tutuyoruz
+                edited_df = edited_df[edited_df['Sil'] == False]
+            
+            # --- 2. TEMİZLİK ---
+            # 'Sil' kolonunu veritabanına kaydetmememiz lazım, onu uçuruyoruz
+            edited_df = edited_df.drop(columns=['Sil'])
+            
+            # --- 3. VALIDATION ---
             has_empty_title = edited_df['Baslik'].isnull().any() or (edited_df['Baslik'].astype(str).str.strip() == '').any()
             has_empty_desc = edited_df['Aciklama'].isnull().any() or (edited_df['Aciklama'].astype(str).str.strip() == '').any()
 
             if has_empty_title or has_empty_desc:
-                st.error("❌ Hata: 'Baslik' veya 'Aciklama' alanları boş bırakılamaz!")
+                st.error("❌ Hata: 'Baslik' veya 'Aciklama' alanları boş bırakılamaz! Lütfen boş satırları silin veya doldurun.")
             else:
-                # Normalizasyon
+                # --- 4. NORMALİZASYON ---
                 edited_df['Tags'] = edited_df['Tags'].fillna("").astype(str).apply(clean_tags)
                 
-                # Kayıt
+                # --- 5. KAYIT ---
                 edited_df.to_csv(DATA_FILE, index=False)
                 st.success("✅ Veri tabanı güncellendi!")
                 st.rerun()
