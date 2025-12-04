@@ -19,10 +19,13 @@ model = load_model()
 # --- 2. YARDIMCI FONKSİYONLAR ---
 def clean_tags(tag_input):
     """Tagleri temizler, sıralar ve duplicate'leri uçurur."""
-    if not tag_input or tag_input.strip() == "":
+    # Gelen veri bazen float(nan) olabilir, stringe çevirip kontrol edelim
+    tag_str = str(tag_input)
+    if not tag_input or tag_str.strip() == "" or tag_str.lower() == "nan":
         return "genel"
+    
     # Virgülle ayır, boşlukları sil, küçük harfe çevir
-    tags = [t.strip().lower() for t in tag_input.split(',')]
+    tags = [t.strip().lower() for t in tag_str.split(',')]
     # Set ile tekrarları kaldır, sonra alfabetik sırala
     tags = sorted(list(set(tags)))
     # Tekrar string yap
@@ -56,6 +59,10 @@ df = load_data()
 def process_embeddings(dataframe):
     # BURASI KRİTİK: Açıklama + Tagleri birleştiriyoruz.
     # Böylece Tagler de konuma (x, y, z) etki ediyor.
+    # NaN değerleri string ' ' ile doldurarak hata almayı önlüyoruz
+    dataframe['Aciklama'] = dataframe['Aciklama'].fillna('')
+    dataframe['Tags'] = dataframe['Tags'].fillna('')
+    
     combined_text = dataframe['Aciklama'] + ". " + dataframe['Tags']
     
     embeddings = model.encode(combined_text.tolist())
@@ -107,62 +114,47 @@ with st.sidebar:
         else:
             st.warning("Başlık ve Açıklama zorunludur!")
 
-# --- ANA EKRAN ---
-tab1, tab2 = st.tabs(["🔍 Liste & Arama", "🌌 Semantik Galaksi"])
+# --- ANA EKRAN (GÜNCELLENDİ) ---
+# Artık 3 sekmemiz var: Arama, Galaksi, Yönetim
+tab1, tab2, tab3 = st.tabs(["🔍 Liste & Arama", "🌌 Semantik Galaksi", "🛠️ Veri Yönetimi"])
 
+# --- TAB 1: ARAMA ---
 with tab1:
     search_query = st.text_input("Akıllı Arama (Örn: 'Ses yapan robotlar')", "")
     
     if search_query and not df.empty:
-        # HİBRİT ARAMA (Sorguyu da vektöre çevirip kıyaslıyoruz)
         query_vec = model.encode([search_query])
         sim_scores = np.dot(embeddings, query_vec.T).flatten()
         
         df['Benzerlik'] = sim_scores
         results = df.sort_values(by='Benzerlik', ascending=False)
-        
-        # İlk 5 sonucu alıyoruz (Performans için display_results üzerinden gideceğiz)
         display_results = results.head(5)
 
         st.write(f"**'{search_query}'** için sonuçlar:")
         
-        # --- İYİLEŞTİRİLMİŞ PROGRESS BAR MANTIĞI ---
-        # 1. ADIM: Döngüye girmeden ÖNCE Min/Max değerlerini hesaplıyoruz
         if not display_results.empty:
             min_score = display_results['Benzerlik'].min()
             max_score = display_results['Benzerlik'].max()
             denominator = max_score - min_score
 
-            # 2. ADIM: Döngü Başlıyor
             for index, row in display_results.iterrows():
                 score = row['Benzerlik']
-                
-                # 3. ADIM: Normalizasyon Mantığı
                 if denominator == 0:
-                    # Hepsi eşitse veya tek sonuç varsa
                     normalized_score = score 
                 else:
-                    # Min-Max Normalization formülü
                     normalized_score = (score - min_score) / denominator
-
-                # 4. ADIM: Güvenlik Kilidi (Clamping)
-                # Değeri zorla 0.0 - 1.0 arasına sıkıştırıyoruz.
+                
                 safe_progress = max(0.0, min(1.0, float(normalized_score)))
-                
-                # Streamlit Progress Bar
                 st.progress(safe_progress)
-                
-                # Bilgi Kartı
                 st.info(f"**{row['Baslik']}** (Skor: {score:.2f}) | 🏷️ {row['Tags']}\n\n{row['Aciklama']}\n\n[🔗 Git]({row['Link']})")
-
     else:
-        st.dataframe(df)
+        st.info("Arama yapmak için yukarıya bir şeyler yazın veya tüm listeyi aşağıda görün.")
+        st.dataframe(df) # Varsayılan olarak tüm listeyi göster
 
+# --- TAB 2: GÖRSELLEŞTİRME ---
 with tab2:
     if not df.empty:
         st.write("🌌 Benzer açıklamalar ve **benzer tagler** birbirini çeker.")
-        
-        # KOYU MOD GÖRSELLEŞTİRME
         fig = px.scatter_3d(
             df, x='x', y='y', z='z',
             color='Tags', 
@@ -172,19 +164,51 @@ with tab2:
             opacity=0.9,
             size_max=15
         )
-        
-        # Tamamen temiz, uzay görünümü
         fig.update_layout(
-            scene=dict(
-                xaxis=dict(visible=False),
-                yaxis=dict(visible=False),
-                zaxis=dict(visible=False),
-                bgcolor='rgba(0,0,0,0)'
-            ),
+            scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False), bgcolor='rgba(0,0,0,0)'),
             margin=dict(l=0, r=0, b=0, t=10),
             legend=dict(yanchor="top", y=0.9, xanchor="left", x=0.1)
         )
-        
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.write("Henüz veri yok.")
+
+# --- TAB 3: VERİ YÖNETİMİ (GÜNCELLENMİŞ & GÜVENLİ) ---
+with tab3:
+    st.header("Veri Tabanını Düzenle")
+    st.warning("⚠️ Dikkat: Burada yaptığınız değişiklikler 'Değişiklikleri Kaydet' butonuna basınca kalıcı olur.")
+    
+    if not df.empty:
+        # num_rows="dynamic" sayesinde satır ekleyip silebilirsin
+        edited_df = st.data_editor(
+            df[['Baslik', 'Link', 'Aciklama', 'Tags']], # x,y,z'yi göstermiyoruz, onları arkada biz hesaplıyoruz
+            num_rows="dynamic",
+            use_container_width=True,
+            key="data_editor"
+        )
+        
+        if st.button("💾 Değişiklikleri Kaydet"):
+            # 1. Index Reset
+            edited_df = edited_df.reset_index(drop=True)
+            
+            # 2. BOŞ DEĞER KONTROLÜ (Validation)
+            # Başlık veya Açıklama boşsa veya sadece boşluktan ibaretse hata ver
+            # Pandas'ta string kolonlar bazen None, bazen NaN, bazen "" olabilir. Hepsini kapsayalım.
+            has_empty_title = edited_df['Baslik'].isnull().any() or (edited_df['Baslik'].astype(str).str.strip() == '').any()
+            has_empty_desc = edited_df['Aciklama'].isnull().any() or (edited_df['Aciklama'].astype(str).str.strip() == '').any()
+
+            if has_empty_title or has_empty_desc:
+                st.error("❌ Hata: 'Baslik' veya 'Aciklama' alanları boş bırakılamaz! Lütfen boş satırları silin veya doldurun.")
+            else:
+                # 3. TAG NORMALİZASYONU
+                # Kullanıcı " AI , tool" yazmış olabilir, bunu "ai, tool" formatına çevirelim
+                # fillna("") ile olası NaN hatalarını önlüyoruz
+                edited_df['Tags'] = edited_df['Tags'].fillna("").astype(str).apply(clean_tags)
+                
+                # 4. KAYDET
+                edited_df.to_csv(DATA_FILE, index=False)
+                
+                st.success("✅ Veri tabanı başarıyla güncellendi, etiketler düzenlendi! Uygulama yeniden başlatılıyor...")
+                st.rerun()
+    else:
+        st.write("Düzenlenecek veri yok.")
