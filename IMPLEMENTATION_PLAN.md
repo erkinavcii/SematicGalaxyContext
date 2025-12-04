@@ -433,44 +433,58 @@ streamlit run app.py
 
 ### Özelliklere Eklenebilecekler
 
-#### 🔴 Kritik Öncelik
-- [x] **Bookmark düzenleme/silme**: Update ve delete işlemleri (CRUD completion) → **✅ v0.3 Tamamlandı**
+#### ✅ Tamamlananlar (v0.7 itibariyle)
+- [x] **Bookmark düzenleme/silme** → **✅ v0.3 Tamamlandı**
   - Tab 3: Veri Yönetimi sekmesi
   - Excel-like editing (st.data_editor)
-  - Satır ekleme/silme (num_rows='dynamic')
+  - Checkbox ile toplu/tekli silme
   - Otomatik tag normalizasyonu
   - Boş değer validasyonu
-- [ ] **Tag filtresi (Sidebar)**: Multi-select ile içerik filtreleme
-  - Tüm unique tag'leri listele
-  - AND/OR mantığı seçimi
+- [x] **Tag filtresi** → **✅ v0.4 Tamamlandı**
+  - Sidebar multi-select
+  - AND/OR mantığı toggle
   - Hem liste hem 3D haritayı filtrele
-
-#### 🟡 Orta Öncelik  
-- [x] **Kelime Bulutu (Word Cloud)**: En çok kullanılan tag görselleştirmesi → **✅ v0.5 Tamamlandı**
+  - Hybrid search (Tag + Semantic)
+- [x] **Kelime Bulutu (Word Cloud)** → **✅ v0.5 Tamamlandı**
   - Tab 4: "☁️ Analiz" sekmesi
   - WordCloud: Dark mode, viridis palette
-  - Top 10 bar chart (Plotly)
+  - Top 10 bar/pie chart (Plotly)
   - 2 kolonlu layout
   - Memory leak fix (plt.close)
-- [ ] **LLM Sohbet Asistanı**: Bookmark'larla konuşma
+- [x] **Export/Import** → **✅ v0.7 Tamamlandı**
+  - CSV Download button (Export)
+  - File uploader (Import)
+  - Schema validation (kolon kontrolü)
+  - Tag normalization on import
+  - Error handling
+
+#### 🔴 Yüksek Öncelik (v0.8 - Intelligence Layer)
+- [ ] **LLM Sohbet Asistanı (RAG)**: Bookmark'larla konuşma
   - Gemini/GPT API entegrasyonu
-  - Context: Tüm bookmark description'ları
+  - Context: Tüm bookmark description'ları + semantic search
   - Örnek sorgu: "AI ses toollarıyla Notion AI arasındaki fark nedir?"
-  - Cevap: LLM bookmark'larını analiz edip özet çıkarır
+  - Cevap: LLM bookmark'ları analiz edip özet çıkarır
   - RAG (Retrieval-Augmented Generation) yaklaşımı
+- [ ] **N-Grams Analizi**: Word Cloud için kelime öbekleri
+  - Bigrams, Trigrams extraction
+  - "Veri Analizi", "Yapay Zeka" gibi konseptleri yakalama
+  - CountVectorizer ile implementation
+- [ ] **Sunburst Chart**: Hiyerarşik tag ilişkileri görselleştirmesi
+
+#### 🟡 Orta Öncelik (v0.9 - Polish & Scale)
 - [ ] **Kategoriler**: Tag'ler dışında üst seviye kategoriler
-- [ ] **Notlar**: Her bookmark'a kişisel notlar
+- [ ] **Notlar**: Her bookmark'a kişisel notlar ekleme
 - [ ] **Favoriler**: Favori işaretleme sistemi
-- [ ] **Export/Import**: CSV, Markdown, JSON formatlarında dışa aktarma
-- [ ] **Dark mode**: Kullanıcı tercihi (UI toggle)
-- [ ] **Multi-language**: Türkçe/İngilizce içerik desteği
+- [ ] **Dark mode toggle**: Kullanıcı tercihi (şu an sabit dark)
+- [ ] **Multi-language (i18n)**: Türkçe/İngilizce UI toggle
 
 ### Teknik İyileştirmeler
-- [ ] **Incremental learning**: Eski embeddingler değişmesin
+- [ ] **Embedding cache**: Incremental learning (eski embeddingler değişmesin)
 - [ ] **Clustering gösterimi**: K-means ile otomatik kümeler
-- [ ] **Benzerlik ağı**: Belirli threshold üstü benzer içerikler arasında çizgiler
+- [ ] **Benzerlik ağı**: Belirli threshold üstü benzer içerikler arasında çizgiler (Network graph)
 - [ ] **Timeline view**: Zaman bazlı görselleştirme
-- [ ] **Mobile app**: React Native wrapper
+- [ ] **Performance optimization**: 1000+ veri için caching stratejisi
+- [ ] **Mobile app**: React Native wrapper (çok uzun vadeli)
 
 ---
 
