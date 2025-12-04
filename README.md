@@ -1,8 +1,14 @@
 # 🌌 Semantic Galaxy
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://semantic-galaxy.streamlit.app)
+![Version](https://img.shields.io/badge/version-0.8.1-blue)
+![Python](https://img.shields.io/badge/python-3.10+-green)
+
 > 3D semantik bookmark görselleştirme ve akıllı arama sistemi.
 
 **Semantic Galaxy**, kaydettiğin içerikleri makine öğrenmesi ile analiz edip 3D uzayda görselleştiren, tag'ler ve semantik arama ile erişim sağlayan yeni nesil kişisel bilgi yönetim sistemidir.
+
+![Ana Ekran](screenshots/01_main_search.png)
 
 ---
 

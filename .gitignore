@@ -14,7 +14,8 @@ venv.bak/
 
 # Streamlit
 .streamlit/secrets.toml
-.streamlit/config.toml
+# Keep config.toml tracked for deployment
+
 
 # IDE
 .vscode/
