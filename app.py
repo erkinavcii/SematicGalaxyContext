@@ -112,16 +112,13 @@ with st.sidebar:
     st.header("➕ Yeni İçerik Ekle")
 
     # --- HATA DÜZELTME & FORM TEMİZLEME MANTIĞI ---
-    # Eğer bir önceki turda kayıt yapıldıysa (data_saved=True), 
-    # widgetlar çizilmeden ÖNCE içlerini temizliyoruz.
     if st.session_state.get("data_saved", False):
         st.session_state.new_title_input = ""
         st.session_state.new_link_input = ""
         st.session_state.new_desc_input = ""
         st.session_state.new_tags_input = ""
-        st.session_state.data_saved = False # Bayrağı indiriyoruz
+        st.session_state.data_saved = False 
 
-    # Widget'lara key ekledik ki session_state üzerinden kontrol edebilelim
     new_title = st.text_input("Başlık", key="new_title_input")
     new_link = st.text_input("Link", key="new_link_input")
     new_desc = st.text_area("Açıklama", key="new_desc_input")
@@ -163,14 +160,49 @@ with st.sidebar:
             })
             new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
             
-            # CRITICAL FIX: Burada widget değerini değiştirmek yerine
-            # bir sonraki turda temizlenmesi için bayrak kaldırıyoruz.
             st.session_state.data_saved = True 
             
             st.success(f"Eklendi!")
             st.rerun() 
         else:
             st.warning("Başlık ve Açıklama zorunludur!")
+    
+    # --- YEDEKLEME (YENİ ÖZELLİK) ---
+    st.divider()
+    st.header("💾 Yedekleme")
+    
+    # 1. İndirme (Export)
+    if not df.empty:
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Veri Setini İndir (CSV)",
+            data=csv,
+            file_name='my_semantic_brain_backup.csv',
+            mime='text/csv',
+            help="Tüm veri tabanını bilgisayarına indir."
+        )
+    
+    # 2. Yükleme (Import)
+    uploaded_file = st.file_uploader("📤 Yedekten Yükle (CSV)", type="csv", help="Daha önce indirdiğin yedeği geri yükle.")
+    
+    if uploaded_file is not None:
+        try:
+            # CSV'yi oku
+            uploaded_df = pd.read_csv(uploaded_file)
+            
+            # Kolon kontrolü (Veri bozulmasını önlemek için şart)
+            required_cols = ["Baslik", "Link", "Aciklama", "Tags"]
+            if all(col in uploaded_df.columns for col in required_cols):
+                # Mevcut tagleri temizle ve kaydet
+                uploaded_df['Tags'] = uploaded_df['Tags'].fillna("").astype(str).apply(clean_tags)
+                uploaded_df.to_csv(DATA_FILE, index=False)
+                
+                st.success("✅ Yedek başarıyla yüklendi! Sayfa yenileniyor...")
+                st.rerun()
+            else:
+                st.error(f"❌ Hatalı format! CSV dosyasında şu kolonlar olmalı: {', '.join(required_cols)}")
+        except Exception as e:
+            st.error(f"Hata oluştu: {e}")
 
 # --- ANA FİLTRELEME ---
 filtered_df = df.copy()
