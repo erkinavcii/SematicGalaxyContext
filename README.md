@@ -10,6 +10,36 @@
 
 ![Ana Ekran](screenshots/01_main_search.png)
 
+### 📸 Özellik Galerisi
+
+<details>
+<summary>🔍 Akıllı Arama & Şanslıyım Butonu</summary>
+
+![Şanslıyım Özelliği](screenshots/02_lucky_button.png)
+*Rastgele bookmark keşfi ve semantik benzer sonuçlar*
+</details>
+
+<details>
+<summary>🌌 3D Semantik Galaksi</summary>
+
+![3D Görselleştirme](screenshots/03_galaxy_3d.png)
+*UMAP ile 3D uzayda interaktif görselleştirme*
+</details>
+
+<details>
+<summary>🛠️ Veri Yönetimi (CRUD)</summary>
+
+![Veri Editörü](screenshots/04_data_management.png)
+*Excel-like editing, checkbox ile toplu silme*
+</details>
+
+<details>
+<summary>☁️ Analytics & Word Cloud</summary>
+
+![Analiz Grafikleri](screenshots/05_analytics.png)
+*Word Cloud, Pie Chart, Bar Chart - Türkçe stopwords ile*
+</details>
+
 ---
 
 ## 🎯 Problem & Çözüm
