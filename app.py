@@ -11,6 +11,110 @@ from wordcloud import WordCloud
 # --- SAYFA AYARLARI ---
 st.set_page_config(page_title="My Semantic Brain", layout="wide")
 
+# --- CUSTOM CSS (KART TASARIMI) ---
+st.markdown("""
+<style>
+    .result-card {
+        background-color: #262730;
+        border: 1px solid #464b5c;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        transition: transform 0.2s;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .result-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.5);
+        border-color: #ff4b4b;
+    }
+    .card-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .favicon {
+        width: 24px;
+        height: 24px;
+        margin-right: 10px;
+        border-radius: 4px;
+    }
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #ffffff;
+        text-decoration: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .card-body {
+        color: #c0c0c0;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+        line-height: 1.5;
+        flex-grow: 1;
+    }
+    .tag-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-bottom: 10px;
+    }
+    .tag-badge {
+        background-color: #31333F;
+        color: #ff4b4b;
+        border: 1px solid #ff4b4b;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+    }
+    .progress-bg {
+        width: 100%;
+        background-color: #31333F;
+        height: 6px;
+        border-radius: 3px;
+        margin-bottom: 15px;
+    }
+    .progress-fill {
+        height: 100%;
+        background-color: #4CAF50;
+        border-radius: 3px;
+        transition: width 0.5s ease-in-out;
+    }
+    .card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid #464b5c;
+        padding-top: 10px;
+        margin-top: auto;
+    }
+    .score-badge {
+        font-size: 0.8rem;
+        color: #4CAF50;
+        font-weight: bold;
+    }
+    .visit-btn {
+        background-color: #ff4b4b;
+        color: white !important;
+        padding: 6px 12px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: background 0.3s;
+    }
+    .visit-btn:hover {
+        background-color: #ff2b2b;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # --- 1. MODELİ YÜKLE ---
 @st.cache_resource
 def load_model():
@@ -58,7 +162,7 @@ def load_data():
     if not os.path.exists(DATA_FILE):
         data = {
             "Baslik": ["ElevenLabs", "Midjourney", "Notion AI", "ChatGPT", "Blender"],
-            "Link": ["https://elevenlabs.io", "#", "#", "#", "#"],
+            "Link": ["https://elevenlabs.io", "https://midjourney.com", "https://notion.so", "https://chat.openai.com", "https://blender.org"],
             "Aciklama": [
                 "Yapay zeka ile ses kopyalama ve metinden ses üretme aracı.",
                 "Metinden görsel oluşturan yapay zeka sanat aracı.",
@@ -223,6 +327,8 @@ with tab1:
     search_query = st.text_input("Akıllı Arama (Örn: 'Ses yapan robotlar')", "")
     if not filtered_df.empty:
         display_df = filtered_df.copy()
+        
+        # Skorlama Mantığı
         if search_query:
             query_vec = model.encode([search_query])
             full_sim_scores = np.dot(embeddings, query_vec.T).flatten()
@@ -235,19 +341,73 @@ with tab1:
             msg = f"🏷️ **Seçili etiketlere ({label}) göre**" if selected_tags else "Tüm kayıtlar:"
             st.write(f"{msg} ({len(display_df)} kayıt)")
 
-        results = display_df.head(10)
+        results = display_df.head(20) # Daha çok sonuç gösterelim, kartlar şık duruyor
+        
         if not results.empty:
-            if 'Benzerlik' in results.columns:
+            # Skor Normalizasyonu (Progress bar için)
+            if 'Benzerlik' in results.columns and search_query:
                 min_s, max_s = results['Benzerlik'].min(), results['Benzerlik'].max()
                 denom = max_s - min_s
-            for _, row in results.iterrows():
-                score_text = ""
-                if search_query and 'Benzerlik' in row:
-                    sc = row['Benzerlik']
-                    norm = (sc - min_s) / denom if denom != 0 else sc
-                    st.progress(max(0.0, min(1.0, float(norm))))
-                    score_text = f"(Skor: {sc:.2f})"
-                st.info(f"**{row['Baslik']}** {score_text} | 🏷️ {row['Tags']}\n\n{row['Aciklama']}\n\n[🔗 Git]({row['Link']})")
+            
+            # --- CARD UI LOOP ---
+            # 2 Sütunlu Grid Oluşturuyoruz
+            cols = st.columns(2)
+            
+            for index, row in results.iterrows():
+                # Hangi kolona koyacağımızı seçiyoruz
+                col = cols[index % 2]
+                
+                with col:
+                    # 1. Skor Hesaplama
+                    score_percent = 0
+                    score_val = 0.0
+                    if search_query and 'Benzerlik' in row:
+                        score_val = row['Benzerlik']
+                        norm = (score_val - min_s) / denom if denom != 0 else score_val
+                        score_percent = max(0.0, min(1.0, float(norm))) * 100
+                    
+                    # 2. Tag HTML Hazırlama
+                    tags_html = ""
+                    if row['Tags']:
+                        for t in str(row['Tags']).split(','):
+                            tags_html += f'<span class="tag-badge">{t.strip()}</span>'
+
+                    # 3. Favicon Linki
+                    # Google'ın favicon servisini kullanıyoruz
+                    link = row['Link']
+                    favicon_url = f"https://www.google.com/s2/favicons?domain_url={link}&sz=64"
+                    
+                    # 4. HTML Kartı Render Et
+                    # Not: f-string içinde süslü parantez kullanmak için {{ }} kullanılır.
+                    st.markdown(f"""
+                    <div class="result-card">
+                        <div>
+                            <div class="card-header">
+                                <img src="{favicon_url}" class="favicon" onerror="this.style.display='none'">
+                                <a href="{link}" target="_blank" class="card-title" title="{row['Baslik']}">{row['Baslik']}</a>
+                            </div>
+                            <div class="card-body">
+                                {row['Aciklama']}
+                            </div>
+                        </div>
+                        <div>
+                            {f'''
+                            <div class="progress-bg">
+                                <div class="progress-fill" style="width: {score_percent}%;"></div>
+                            </div>
+                            ''' if search_query else ''}
+                            
+                            <div class="tag-container">
+                                {tags_html}
+                            </div>
+                            
+                            <div class="card-footer">
+                                <span class="score-badge">{f'Skor: {score_val:.2f}' if search_query else ''}</span>
+                                <a href="{link}" target="_blank" class="visit-btn">Siteye Git ➜</a>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
         else:
             st.warning("Sonuç yok.")
     else:
