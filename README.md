@@ -1,6 +1,6 @@
 # 🌌 Semantic Galaxy
 
-[![Streamlit App]([https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://semantic-galaxy.streamlit.app](https://sematicgalaxycontext-ysbtyhl4rqg7ijsja43fs4.streamlit.app/))
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://sematicgalaxycontext-ysbtyhl4rqg7ijsja43fs4.streamlit.app/)
 ![Version](https://img.shields.io/badge/version-0.8.1-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-green)
 
