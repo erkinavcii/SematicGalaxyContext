@@ -1,371 +1,272 @@
 # 🌌 Semantic Galaxy
 
-> Sosyal medyadan kaydettiğin içerikleri sematik ilişkilerine göre 3D uzayda görselleştir ve akıllı arama ile eriş.
+> 3D semantik bookmark görselleştirme ve akıllı arama sistemi.
 
-**Semantic Galaxy**, yer imlerini (bookmarks) klasik liste/klasör yapısından kurtarıp, içeriklerini anlayan ve aralarındaki ilişkileri görselleştiren yeni nesil bir kişisel bilgi yönetim sistemidir.
-
----
-
-## 🎯 Problem
-
-Sosyal medyada sürekli ilginç içerikler buluyorsun:
-- "Sonra bakarım" diyip kaydediyorsun
-- Zamanla yüzlerce kayıt birikiyor
-- Kategorize değil, ne olduğunu unutuyorsun
-- "AI ile ilgili ses aracıydı" diye hatırlıyorsun ama bulamıyorsun
-- Benzer içerikler dağınık, ilişkileri göremiyorsun
+**Semantic Galaxy**, kaydettiğin içerikleri makine öğrenmesi ile analiz edip 3D uzayda görselleştiren, tag'ler ve semantik arama ile erişim sağlayan yeni nesil kişisel bilgi yönetim sistemidir.
 
 ---
 
-## 💡 Çözüm
+## 🎯 Problem & Çözüm
 
-Semantic Galaxy, içeriklerini **anlar** ve **ilişkilendirir**:
+**Sorun**: Sosyal medyada ilginç içerikler buluyorsun, kaydediyorsun, zamanla yüzlerce kayıt birikiyor ama bulamıyorsun.
 
-### 🧠 Semantik Anlama
-Machine learning ile içeriklerinin ne olduğunu anlar. "AI ses değiştirici" ile "yapay zeka vokal aracı" aynı yerde kümelenir.
+**Çözüm**: Semantic Galaxy içeriklerini **anlar**, **ilişkilenir** ve **görselleştirir**.
 
-### 🌐 3D Görselleştirme
-Benzer içerikler uzayda birbirine yakın durur. Bir yıldız kümesi gibi, her nokta bir içerik.
+---
+
+## ✨ Özellikler (v0.6)
 
 ### 🔍 Akıllı Arama
-- **Tag bazlı**: "AI + Ses" filtresi
-- **Semantik**: "Müzik yapan robotlar" yazsan bile ilgili araçları bulur
-- **Hybrid**: İkisini birleştir
+- ✅ **Semantik arama**: Natural language query ("müzik yapan robotlar")
+- ✅ **Tag filtresi**: Multi-select, AND/OR logic toggle
+- ✅ **Hybrid search**: Tag + semantik kombinasyonu
+- ✅ **Progress bars**: Benzerlik skorları ile görsel feedback
+
+###🌌 Görselleştirme
+- ✅ **3D galaksi**: Plotly interactive, dark mode
+- ✅ **Dinamik filtreleme**: Seçili tag'lere göre 3D harita güncellenir
+- ✅ **Hover detaylar**: Başlık, açıklama, tag bilgileri
+
+### ☁️ İleri Seviye Analitik (YENİ - v0.6)
+- ✅ **Word Cloud**: Tag ve açıklama analizi
+- ✅ **Pie Chart**: Top 10 dağılımı (donut style)
+- ✅ **Bar Chart**: Frekans sıralaması
+- ✅ **Stop Words**: Türkçe etkisiz kelime filtresi
+- ✅ **Kaynak seçimi**: "Etiketler" veya "Açıklamalar" analizi
+
+### 🛠️ Veri Yönetimi
+- ✅ **Excel-like editing**: Inline düzenleme (st.data_editor)
+- ✅ **Checkbox silme**: Toplu satır silme + toast notifications
+- ✅ **Auto-refresh**: st.rerun() ile otomatik güncelleme
+- ✅ **Tag normalizasyonu**: Otomatik clean, sort, deduplicate
+- ✅ **Validasyon**: NaN handling, boş değer kontrolü
+
+### 🧠 ML Pipeline
+- ✅ **sentence-transformers**: all-MiniLM-L6-v2 model (384D)
+- ✅ **Tag-aware embeddings**: Description + tags birlikte
+- ✅ **UMAP**: 384D → 3D konumlama
+- ✅ **Cosine similarity**: Semantik benzerlik
 
 ---
 
-## ✨ Özellikler
+## 🛠️ Teknoloji
 
-### Mevcut (Faz 1 - Local Prototype)
-- ✅ **Manuel veri girişi**: Title, URL, description, tags
-- ✅ **Otomatik vektörleştirme**: NLP ile içerik analizi
-- ✅ **3D görselleştirme**: Plotly ile interaktif galaksi haritası
-- ✅ **Liste görünümü**: Klasik tablo formatında görüntüleme
-- ✅ **Tag filtresi**: Çoklu etiket seçimi
-- ✅ **Semantik arama**: Doğal dilde sorgu ("video düzenleme araçları")
-- ✅ **Hybrid search**: Tag + semantik birleşimi
-
-### Planlanan (Faz 2 - Web Deployment)
-- 🔜 **Web/mobil erişim**: Telefondan kullanım
-- 🔜 **Three.js görselleştirme**: Daha performanslı 3D render
-- 🔜 **Düzenleme/silme**: CRUD işlemleri
-- 🔜 **Export/Import**: CSV, JSON, Markdown formatları
-- 🔜 **Favoriler**: Önemli içerikleri işaretle
-- 🔜 **Notlar**: Her içeriğe kişisel notlar
-- 🔜 **Dark mode**: Tema desteği
-
----
-
-## 🛠️ Teknoloji Stack
-
-### Backend & ML
-- **Python 3.10+**: Core dil
-- **sentence-transformers**: NLP embeddings (all-MiniLM-L6-v2 modeli)
-- **UMAP**: Boyut indirgeme (384D → 3D)
-- **scikit-learn**: Cosine similarity hesaplamaları
-- **pandas**: Veri manipülasyonu
-
-### Frontend
-- **Streamlit**: Local web arayüzü
-- **Plotly**: 3D interaktif görselleştirme
-
-### Veri Saklama
-- **JSON**: Hafif ve taşınabilir (ilk aşama)
-- **PostgreSQL + pgvector**: Gelecek için (Faz 2)
+```
+Backend: Python 3.10+, pandas, scikit-learn
+ML/NLP: sentence-transformers, UMAP
+Frontend: Streamlit, Plotly
+Analytics: WordCloud, matplotlib
+Storage: CSV (lightweight, portable)
+```
 
 ---
 
 ## 🚀 Kurulum
 
-### Gereksinimler
-- Python 3.10 veya üzeri
-- 4GB RAM (1000 veri için)
-- İnternet bağlantısı (ilk çalıştırmada model indirimi)
+### Hızlı Başlangıç
 
-### Adım Adım
-
-1. **Projeyi klonla**
 ```bash
+# 1. Clone
 git clone <repo-url>
 cd SematicGalaxyContext
-```
 
-2. **Virtual environment oluştur**
-```bash
+# 2. Virtual environment
 python -m venv venv
 venv\Scripts\activate  # Windows
-# veya
-source venv/bin/activate  # macOS/Linux
-```
+# source venv/bin/activate  # macOS/Linux
 
-3. **Bağımlılıkları yükle**
-```bash
+# 3. Dependencies
 pip install -r requirements.txt
-```
 
-4. **İlk veri dosyasını oluştur** (opsiyonel, uygulama otomatik oluşturur)
-```bash
-mkdir data
-echo "[]" > data/bookmarks.json
-```
-
-5. **Uygulamayı çalıştır**
-```bash
+# 4. Run
 streamlit run app.py
-```
 
-6. **Tarayıcıda aç**
-```
+# 5. Open browser
 http://localhost:8501
 ```
+
+### Gereksinimler
+- Python 3.10+
+- 4GB RAM
+- İnternet (ilk çalıştırmada model indirimi, ~80MB)
 
 ---
 
 ## 📖 Kullanım
 
-### 1. Yeni İçerik Ekleme
+### 1. İçerik Ekleme (Sidebar)
+```
+Başlık: AI Ses Değiştirici
+Link: https://elevenlabs.io
+Açıklama: Yapay zeka ile ses kopyalama ve text-to-speech
+Etiketler: ai, ses, tool
+```
 
-**Sidebar** (sol panel) üzerinden:
-1. **Title**: İçerik başlığı (örn: "AI Ses Değiştirici")
-2. **URL**: Link (opsiyonel)
-3. **Description**: Açıklama (örn: "Yapay zeka ile ses değiştirme, müzik prodüksiyonu")
-4. **Tags**: Etiketler (örn: AI, Ses, Tool)
-5. **"Ekle"** butonuna tıkla
+### 2. Arama & Filtreleme (Tab 1)
+**Tag Filtresi:**
+- Etiket seç: ["ai", "ses"]
+- AND/OR toggle: ☐ "Tüm etiketleri içerenleri getir"
 
-Sistem otomatik olarak:
-- İçeriği vektörleştirir
-- 3D uzayda konumunu hesaplar
-- Galaksi haritasını günceller
+**Semantik Arama:**
+- Sorgu: "müzik yapan programlar"
+- Sistem: "music", "audio", "production" içeren tüm benzer içerikler
 
-### 2. Liste Görünümü
+### 3. 3D Galaksi (Tab 2)
+- Fare ile döndür/zoom
+- Benzer içerikler yakında
+- Renk = Tag kategorisi
 
-**📊 Liste** sekmesinde:
-- Tüm içeriklerini tablo formatında gör
-- Tag'e göre filtrele
-- Başlığa tıklayarak sırala
-- URL'ye tıklayarak siteye git
+### 4. Analitik (Tab 4) ✨ YENİ
+**Kaynak Seçimi:**
+- 🔘 Etiketler: Genel kategorilere bak
+- 🔘 Açıklamalar: İçerik detaylarına in
 
-### 3. 3D Galaksi Keşfi
+**Görselleştirmeler:**
+- 🥧 Pie Chart: Dağılım yüzde
+- 📊 Bar Chart: Frekans sıralaması
+- ☁️ Word Cloud: Kelime bulutu (stop words temiz)
 
-**🌌 3D Galaksi** sekmesinde:
-- Fareyle döndür/zoom yap
-- Noktalara hover yaparak detay gör
-- Renkler tag'lere göre kodlanmış
-- Yakın noktalar semantically benzer içerikler
-
-### 4. Akıllı Arama
-
-**🔍 Arama** sekmesinde:
-
-**Örnek 1 - Sadece Tag:**
-- Tag seçimi: ["AI", "Ses"]
-- Sonuç: Her iki etikete de sahip içerikler
-
-**Örnek 2 - Sadece Semantik:**
-- Arama kutusu: "video düzenleme araçları"
-- Sonuç: "Video", "montaj", "editor" içeren tüm benzer içerikler
-
-**Örnek 3 - Hybrid:**
-- Tag: ["AI"]
-- Arama: "görsel oluşturma"
-- Sonuç: AI etiketli ve semantik olarak "görsel oluşturma"ya yakın içerikler
+### 5. Veri Yönetimi (Tab 3)
+- Tabloda direkt düzenle
+- "Sil" checkbox'ı işaretle
+- "Kaydet" → otomatik refresh
 
 ---
 
 ## 📊 Veri Modeli
 
-### bookmarks.json Örneği
-```json
-[
-  {
-    "id": 1,
-    "title": "Runway Gen-3 Alpha",
-    "url": "https://runwayml.com/gen-3",
-    "description": "Yapay zeka ile video oluşturma, metinden videoya dönüştürme",
-    "tags": ["AI", "Video", "Tool"],
-    "date_added": "2025-12-04T02:16:54+03:00",
-    "embedding": [0.123, -0.456, ...],
-    "umap_coords": [1.23, -0.45, 2.67]
-  },
-  {
-    "id": 2,
-    "title": "ElevenLabs",
-    "url": "https://elevenlabs.io",
-    "description": "AI ile gerçekçi ses klonlama ve text-to-speech",
-    "tags": ["AI", "Ses", "Tool"],
-    "date_added": "2025-12-04T02:20:15+03:00",
-    "embedding": [0.234, -0.567, ...],
-    "umap_coords": [1.45, -0.52, 2.58]
-  }
-]
+### CSV Format
+```csv
+Baslik,Link,Aciklama,Tags
+"ElevenLabs","https://elevenlabs.io","AI sesklonlama","ai, ses, tool"
+"Midjourney","#","Metinden görsel AI","ai, görsel, sanat"
 ```
 
-> **Not**: `embedding` ve `umap_coords` alanları sistem tarafından otomatik oluşturulur.
+> **Not**: `x, y, z` koordinatları runtime'da hesaplanır, CSV'ye kaydedilmez.
 
 ---
 
 ## 🎨 Kullanım Senaryoları
 
-### Senaryo 1: "Buna benzer toollar var mı?"
-**Durum**: "AI ses değiştirici" eklemiştin, buna benzer başka araç aramak istiyorsun.
+### Senaryo 1: "Buna benzer ne var?"
+**Durum**: "AI ses aracı" eklemişsin, benzerlerini istiyorsun.
 
 **Çözüm**:
-1. **3D Galaksi** sekmesine git
-2. "AI Ses Değiştirici" noktasına yakın noktalara bak
-3. Veya **Arama** sekmesinde: "ses değiştirme ai"
+1. **Tab 2** (3D Galaksi) → "AI Ses" noktasının yakınındaki noktalar
+2. veya **Tab 1** (Arama) → "ses değiştirme ai"
 
 ### Senaryo 2: "AI + Video kombinasyonu"
-**Durum**: Hem AI hem video ile ilgili araçları görmek istiyorsun.
+**Durum**: Hem AI hem video tag'li araçları görmek istiyorsun.
 
 **Çözüm**:
-1. **Liste** sekmesinde tag filtresi: ["AI", "Video"]
-2. Veya **Arama**: Tag ["AI", "Video"] seç
+1. Sidebar → Tag filtresi: ["ai", "video"]
+2. AND toggle → ☑ (her ikisi de olsun)
+3. **Tab 2** → Sadece ikisini de içeren noktalar
 
-### Senaryo 3: "Ne olduğunu hatırlamıyorum"
-**Durum**: "Müzikle alakalı bir şeydi ama adını unuttum"
+### Senaryo 3: "Beynim ne hakkında dolu?"
+**Durum**: Genel dağılımı görmek istiyorsun.
 
 **Çözüm**:
-1. **Arama** sekmesi
-2. Arama kutusu: "müzik yapma"
-3. Sistem semantik benzerliğe göre tüm müzik araçlarını getirir
+1. **Tab 4** (Analitik)
+2. Kaynak: 🔘 Etiketler
+3. Pie Chart: "%40 AI, %25 Tasarımım, %15 Video" gibi
 
 ---
 
-## 🧪 Örnek Veri Seti
+## 🔧 Özelleştirme
 
-İlk denemeler için örnek veri:
-
-```bash
-# data/sample_bookmarks.json oluştur
-python scripts/generate_sample_data.py
+### Stop Words Listesi
+`stopwords.txt` dosyasına ekle/çıkar:
+```
+ve
+ile
+bir
+bu
+...
 ```
 
-10 örnek AI/ses/video aracı ekler:
-- Runway Gen-3 (AI video)
-- ElevenLabs (AI ses)
-- Midjourney (AI görsel)
-- CapCut (video editing)
-- Audacity (ses editing)
-- vb.
+### Embedding Modeli Değiştir
+```python
+# app.py satır 13
+model = SentenceTransformer('all-MiniLM-L6-v2')  # İngilizce
 
----
-
-## 🔧 Yapılandırma
+# Türkçe için:
+model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+```
 
 ### UMAP Parametreleri
-
-`src/embedding_engine.py` içinde:
-
 ```python
-umap_model = umap.UMAP(
-    n_components=3,        # 3D çıktı
-    n_neighbors=15,        # Komşu sayısı (↑ = daha global, ↓ = daha lokal)
-    min_dist=0.1,          # Minimum nokta mesafesi (↑ = dağınık, ↓ = sıkışık)
-    metric='cosine',       # Vektör benzerlik metriği
-    random_state=42        # Tekrarlanabilirlik için (kaldırılabilir)
-)
-```
-
-### Embedding Modeli
-
-Farklı diller için model değiştirilebilir:
-
-```python
-# İngilizce (default)
-model = SentenceTransformer('all-MiniLM-L6-v2')
-
-# Çok dilli (Türkçe dahil, ama daha yavaş)
-model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+# app.py satır 82-85
+n_neighbors = min(15, len(dataframe) - 1)  # Komşuluk boyutu
+min_dist = 0.1  # Nokta mesafesi (kodu içinde hardcoded)
 ```
 
 ---
 
 ## 📈 Performans
 
-### Hesaplama Süreleri (1000 veri için)
+| İşlem | Süre (100 veri) | Notlar |
+|-------|-----------------|--------|
+| Embedding | ~1 saniye | İlk çalıştırmada model indirimi |
+| UMAP | ~0.5 saniye | Veri artınca artar |
+| Render | ~0.2 saniye | Browser tarafında |
+|**Toplam** | **~2 saniye** | Yeni veri ekleme |
 
-| İşlem | Süre | CPU/GPU |
-|-------|------|---------|
-| Embedding oluşturma | ~2-3 saniye | CPU |
-| UMAP hesaplama | ~1-2 saniye | CPU |
-| Plotly render | ~0.5 saniye | Browser |
-| Semantic search query | ~0.1 saniye | CPU |
-| **TOPLAM (yeni veri ekleme)** | **~4-6 saniye** | - |
-
-**Optimizasyon İpuçları**:
-- Streamlit `@st.cache_data` kullan (otomatik)
-- Batch ekleme yap (5-10 veri birden)
-- UMAP random_state sabitle (aynı veri = aynı harita)
+**Caching**: Streamlit `@st.cache_resource` otomatik
 
 ---
 
 ## 🗺️ Roadmap
 
-### ✅ Tamamlanan
-- [x] Temel veri modeli
-- [x] ML pipeline (embeddings + UMAP)
-- [x] Streamlit arayüzü
-- [x] 3D görselleştirme
-- [x] Tag filtresi
-- [x] Semantik arama
-- [x] Hybrid search
+### ✅ Tamamlanan (v0.6)
+- [x] Semantik arama & tag filtresi
+- [x] AND/OR logic
+- [x] Word cloud & analytics
+- [x] Stop words sistemi
+- [x] Checkbox delete
+- [x] Auto-refresh
+- [x] Tag normalizasyonu
 
-### 🚧 Öncelikli (Faz 1.5)
-- [ ] CRUD işlemleri (edit, delete)
+### 🔜 Sırada (v0.7)
+- [ ] N-Grams analizi (bigrams, trigrams)
 - [ ] Export/Import (CSV, JSON)
-- [ ] Favoriler sistemi
-- [ ] Notlar ekleme
-- [ ] Dark mode
+- [ ] Description word cloud
+- [ ] Tag consistency checker
 
-### 🔮 Gelecek (Faz 2)
-- [ ] Web deployment (Next.js + FastAPI)
-- [ ] Three.js görselleştirme
-- [ ] PostgreSQL + pgvector entegrasyonu
-- [ ] Mobil responsive tasarım
-- [ ] PWA (offline kullanım)
-- [ ] Otomatik URL scraping
-- [ ] Browser extension
-- [ ] Collaborative mode (çoklu kullanıcı)
+### 🔮 Gelecek (v1.0)
+- [ ] LLM chat integration (RAG)
+- [ ] Verb extraction (eylem analizi)
+- [ ] Co-occurrence network
+- [ ] Sentiment analysis
 
 ---
 
 ## 🤝 Katkıda Bulunma
 
-Proje açık kaynak değil ama öneri/hata bildirimi için:
-
-1. Issue aç
-2. Detaylı açıklama yaz
-3. Ekran görüntüsü ekle (varsa)
+Öneri/hata için GitHub Issues kullan.
 
 ---
 
 ## 📝 Lisans
 
-**Kişisel kullanım** için tasarlandı. Ticari kullanım için iletişime geçin.
+Kişisel kullanım. Ticari için iletişim.
 
 ---
 
-## 🙏 Teşekkürler
+## 🙏 Teşekkür
 
-Bu proje şu harika kütüphaneler sayesinde mümkün:
-
-- [sentence-transformers](https://www.sbert.net/) - NLP embeddings
-- [UMAP](https://umap-learn.readthedocs.io/) - Dimensionality reduction
-- [Streamlit](https://streamlit.io/) - Web framework
-- [Plotly](https://plotly.com/) - 3D visualization
-
----
-
-## 📧 İletişim
-
-Sorular için: [GitHub Issues]
+- [sentence-transformers](https://www.sbert.net/)
+- [UMAP](https://umap-learn.readthedocs.io/)
+- [Streamlit](https://streamlit.io/)
+- [Plotly](https://plotly.com/)
+- [WordCloud](https://github.com/amueller/word_cloud)
 
 ---
 
 <div align="center">
 
-**Yapım aşamasında** 🚧
+**v0.6 - Production Ready** 🚀
 
-İlk stable release için [Faz 1.5]'i takip edin.
+[Demo](#) | [Dokümantasyon](FUTURE_VISION.md) | [İssues](#)
 
 </div>
