@@ -299,12 +299,13 @@ fig.update_layout(
 - [x] Sekme 2: Plotly 3D görselleştirme → **✅ Tamamlandı (Tab2'de)**
 - [x] Test: Yeni veri ekle → 3D harita güncelleniyor mu? → **✅ Tamamlandı (st.rerun() ile otomatik)**
 
-### Faz 1.4: Arama Özellikleri (Tahmini: 2-3 saat)
-- [/] `search_engine.py` yaz → **Monolithic: app.py içinde**
-- [ ] Tag filtresi → **❌ Eksik**
+### Faz 1.4: Arama Özellikleri (Tahmini: 2-3 saat) ✅ %100
+- [x] `search_engine.py` yaz → **Monolithic: app.py içinde**
+- [x] Tag filtresi → **✅ Tamamlandı (sidebar multi-select)**
 - [x] Semantic search (cosine similarity) → **✅ Tamamlandı**
-- [ ] Hybrid search kombinasyonu → **❌ Eksik (tag filtresi olmadan yapılamıyor)**
-- [x] Sekme 3: Arama arayüzü → **✅ Tab1'de entegre**
+- [x] Hybrid search kombinasyonu → **✅ Tamamlandı (tag + semantic)**
+- [x] AND/OR toggle → **✅ Tamamlandı (checkbox)**
+- [x] Filtered 3D visualization → **✅ Tamamlandı**
 
 ### Faz 1.5: İyileştirmeler (Tahmini: 2-3 saat)
 - [x] Performans optimizasyonu (caching) → **✅ Progress bar normalization**
@@ -445,11 +446,12 @@ streamlit run app.py
   - Hem liste hem 3D haritayı filtrele
 
 #### 🟡 Orta Öncelik  
-- [ ] **Kelime Bulutu (Word Cloud)**: En çok kullanılan tag ve kelime görselleştirmesi
-  - `wordcloud` kütüphanesi entegrasyonu
-  - Description'lardan en sık geçen kelimeleri çıkar
-  - Yeni sekme: "📊 Analitik"
-  - Interaktif: Kelimeye tıklayınca o kelimeyi içeren bookmarkları göster
+- [x] **Kelime Bulutu (Word Cloud)**: En çok kullanılan tag görselleştirmesi → **✅ v0.5 Tamamlandı**
+  - Tab 4: "☁️ Analiz" sekmesi
+  - WordCloud: Dark mode, viridis palette
+  - Top 10 bar chart (Plotly)
+  - 2 kolonlu layout
+  - Memory leak fix (plt.close)
 - [ ] **LLM Sohbet Asistanı**: Bookmark'larla konuşma
   - Gemini/GPT API entegrasyonu
   - Context: Tüm bookmark description'ları
