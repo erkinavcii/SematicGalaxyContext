@@ -121,12 +121,40 @@ with tab1:
         df['Benzerlik'] = sim_scores
         results = df.sort_values(by='Benzerlik', ascending=False)
         
+        # İlk 5 sonucu alıyoruz (Performans için display_results üzerinden gideceğiz)
+        display_results = results.head(5)
+
         st.write(f"**'{search_query}'** için sonuçlar:")
-        for index, row in results.head(5).iterrows():
-            score = row['Benzerlik']
-            # Skor barı ekleyelim
-            st.progress(float(score) if score > 0 else 0)
-            st.info(f"**{row['Baslik']}** (Skor: {score:.2f}) | 🏷️ {row['Tags']}\n\n{row['Aciklama']}\n\n[🔗 Git]({row['Link']})")
+        
+        # --- İYİLEŞTİRİLMİŞ PROGRESS BAR MANTIĞI ---
+        # 1. ADIM: Döngüye girmeden ÖNCE Min/Max değerlerini hesaplıyoruz
+        if not display_results.empty:
+            min_score = display_results['Benzerlik'].min()
+            max_score = display_results['Benzerlik'].max()
+            denominator = max_score - min_score
+
+            # 2. ADIM: Döngü Başlıyor
+            for index, row in display_results.iterrows():
+                score = row['Benzerlik']
+                
+                # 3. ADIM: Normalizasyon Mantığı
+                if denominator == 0:
+                    # Hepsi eşitse veya tek sonuç varsa
+                    normalized_score = score 
+                else:
+                    # Min-Max Normalization formülü
+                    normalized_score = (score - min_score) / denominator
+
+                # 4. ADIM: Güvenlik Kilidi (Clamping)
+                # Değeri zorla 0.0 - 1.0 arasına sıkıştırıyoruz.
+                safe_progress = max(0.0, min(1.0, float(normalized_score)))
+                
+                # Streamlit Progress Bar
+                st.progress(safe_progress)
+                
+                # Bilgi Kartı
+                st.info(f"**{row['Baslik']}** (Skor: {score:.2f}) | 🏷️ {row['Tags']}\n\n{row['Aciklama']}\n\n[🔗 Git]({row['Link']})")
+
     else:
         st.dataframe(df)
 
