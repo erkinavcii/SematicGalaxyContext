@@ -297,7 +297,7 @@ fig.update_layout(
 - [x] Sidebar: Veri ekleme formu → **✅ Tamamlandı**
 - [x] Sekme 1: DataFrame liste görünümü → **✅ Tamamlandı (Tab1'de)**
 - [x] Sekme 2: Plotly 3D görselleştirme → **✅ Tamamlandı (Tab2'de)**
-- [x] Test: Yeni veri ekle → 3D harita güncelleniyor mu? → **⚠️ Kısmen (Manuel F5 gerekli)**
+- [x] Test: Yeni veri ekle → 3D harita güncelleniyor mu? → **✅ Tamamlandı (st.rerun() ile otomatik)**
 
 ### Faz 1.4: Arama Özellikleri (Tahmini: 2-3 saat)
 - [/] `search_engine.py` yaz → **Monolithic: app.py içinde**
@@ -307,10 +307,12 @@ fig.update_layout(
 - [x] Sekme 3: Arama arayüzü → **✅ Tab1'de entegre**
 
 ### Faz 1.5: İyileştirmeler (Tahmini: 2-3 saat)
-- [ ] Performans optimizasyonu (caching)
-- [ ] UI/UX iyileştirmeleri
-- [ ] Hata yönetimi
-- [ ] İlk 100 verini ekle ve test et
+- [x] Performans optimizasyonu (caching) → **✅ Progress bar normalization**
+- [x] UI/UX iyileştirmeleri → **✅ Dark mode, auto-refresh, progress bars**
+- [x] Hata yönetimi → **✅ NaN handling, validation, error messages**
+- [x] **CRUD Operations** → **✅ Tab 3: Veri Yönetimi (Edit/Delete)**
+- [x] **Tag auto-normalization** → **✅ clean_tags() improvements**
+- [ ] İlk 100 verini ekle ve test et → **🔄 User tarafından yapılacak**
 
 **Toplam Tahmini Süre**: 10-15 saat (tek kişi, yan proje hızında)
 
@@ -429,12 +431,36 @@ streamlit run app.py
 ## Gelecek İyileştirmeler (Backlog)
 
 ### Özelliklere Eklenebilecekler
-- [ ] **Bookmark düzenleme/silme**: Update ve delete işlemleri
+
+#### 🔴 Kritik Öncelik
+- [x] **Bookmark düzenleme/silme**: Update ve delete işlemleri (CRUD completion) → **✅ v0.3 Tamamlandı**
+  - Tab 3: Veri Yönetimi sekmesi
+  - Excel-like editing (st.data_editor)
+  - Satır ekleme/silme (num_rows='dynamic')
+  - Otomatik tag normalizasyonu
+  - Boş değer validasyonu
+- [ ] **Tag filtresi (Sidebar)**: Multi-select ile içerik filtreleme
+  - Tüm unique tag'leri listele
+  - AND/OR mantığı seçimi
+  - Hem liste hem 3D haritayı filtrele
+
+#### 🟡 Orta Öncelik  
+- [ ] **Kelime Bulutu (Word Cloud)**: En çok kullanılan tag ve kelime görselleştirmesi
+  - `wordcloud` kütüphanesi entegrasyonu
+  - Description'lardan en sık geçen kelimeleri çıkar
+  - Yeni sekme: "📊 Analitik"
+  - Interaktif: Kelimeye tıklayınca o kelimeyi içeren bookmarkları göster
+- [ ] **LLM Sohbet Asistanı**: Bookmark'larla konuşma
+  - Gemini/GPT API entegrasyonu
+  - Context: Tüm bookmark description'ları
+  - Örnek sorgu: "AI ses toollarıyla Notion AI arasındaki fark nedir?"
+  - Cevap: LLM bookmark'larını analiz edip özet çıkarır
+  - RAG (Retrieval-Augmented Generation) yaklaşımı
 - [ ] **Kategoriler**: Tag'ler dışında üst seviye kategoriler
 - [ ] **Notlar**: Her bookmark'a kişisel notlar
 - [ ] **Favoriler**: Favori işaretleme sistemi
 - [ ] **Export/Import**: CSV, Markdown, JSON formatlarında dışa aktarma
-- [ ] **Dark mode**: Kullanıcı tercihi
+- [ ] **Dark mode**: Kullanıcı tercihi (UI toggle)
 - [ ] **Multi-language**: Türkçe/İngilizce içerik desteği
 
 ### Teknik İyileştirmeler
