@@ -95,11 +95,15 @@ with st.sidebar:
     # --- BÖLÜM 1: FİLTRELEME (YENİ) ---
     st.header("🏷️ Filtrele")
     unique_tags_list = get_unique_tags(df)
+    
     selected_tags = st.multiselect(
         "Etiket Seç (Hybrid Search)", 
         unique_tags_list,
         placeholder="Tümünü Göster"
     )
+    
+    # AND/OR Mantığı (YENİ)
+    use_and_logic = st.checkbox("Sadece tüm etiketleri içerenleri getir (AND)", value=False)
     
     st.divider() # Çizgi çek
 
@@ -130,14 +134,19 @@ filtered_df = df.copy()
 
 # Eğer etiket seçildiyse DataFrame'i daralt
 if selected_tags:
-    # KRİTİK DÜZELTME: Artık hem "ai, robot" hem "ai,robot" formatları destekleniyor.
-    # split(',') ile ayırıp strip() ile boşlukları temizliyoruz.
-    mask = filtered_df['Tags'].apply(
-        lambda row_tags: any(
-            tag in [t.strip() for t in str(row_tags).split(',')] 
-            for tag in selected_tags
-        )
-    )
+    def check_tags(row_tags):
+        # Satırdaki tagleri listeye çevir
+        row_tag_list = [t.strip() for t in str(row_tags).split(',')]
+        
+        if use_and_logic:
+            # AND: Seçilenlerin HEPSİ satırda var mı?
+            return all(tag in row_tag_list for tag in selected_tags)
+        else:
+            # OR: Seçilenlerin HERHANGİ BİRİ satırda var mı?
+            return any(tag in row_tag_list for tag in selected_tags)
+
+    # Fonksiyonu uygula
+    mask = filtered_df['Tags'].apply(check_tags)
     filtered_df = filtered_df[mask]
 
 # --- ANA EKRAN SEKMELERİ ---
@@ -152,14 +161,13 @@ with tab1:
 
         if search_query:
             # 1. Önce tüm (orijinal) veri için skorları hesapla
-            # (Çünkü embeddings tüm veri için var, indexler kaymasın)
             query_vec = model.encode([search_query])
             full_sim_scores = np.dot(embeddings, query_vec.T).flatten()
             
             # 2. Skorları orijinal df'ye ekle
             df['Benzerlik'] = full_sim_scores
             
-            # 3. Sonra filtrelenmiş df'ye bu skorları map et (Merge/Join yerine loc ile alıyoruz)
+            # 3. Sonra filtrelenmiş df'ye bu skorları map et
             display_df['Benzerlik'] = df.loc[display_df.index, 'Benzerlik']
             
             # 4. Sırala
@@ -168,7 +176,8 @@ with tab1:
         else:
             # Arama yoksa ama filtre varsa
             if selected_tags:
-                st.write(f"🏷️ **Seçili etiketlere göre** sonuçlar ({len(display_df)} kayıt):")
+                logic_text = "VE" if use_and_logic else "VEYA"
+                st.write(f"🏷️ **Seçili etiketlere ({logic_text}) göre** sonuçlar ({len(display_df)} kayıt):")
             else:
                 st.write("Tüm kayıtlar:")
 
@@ -206,7 +215,8 @@ with tab2:
     if not filtered_df.empty:
         # Mesajı duruma göre değiştir
         if selected_tags:
-            st.write(f"🌌 Galaksi şu an **{', '.join(selected_tags)}** etiketlerine odaklandı.")
+            logic_text = "VE" if use_and_logic else "VEYA"
+            st.write(f"🌌 Galaksi şu an **{', '.join(selected_tags)}** ({logic_text}) etiketlerine odaklandı.")
         else:
             st.write("🌌 Benzer açıklamalar ve **benzer tagler** birbirini çeker.")
             
