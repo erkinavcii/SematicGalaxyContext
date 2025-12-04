@@ -205,24 +205,65 @@ if selected_tags:
 tab1, tab2, tab3, tab4 = st.tabs(["🔍 Liste & Arama", "🌌 Semantik Galaksi", "🛠️ Veri Yönetimi", "☁️ Analiz"])
 
 with tab1:
-    search_query = st.text_input("Akıllı Arama (Örn: 'Ses yapan robotlar')", "")
+    # Session state başlangıcı (Şanslı seçim için)
+    if 'lucky_selection' not in st.session_state:
+        st.session_state.lucky_selection = None
+
+    # Arama çubuğu ve Şanslı Butonu
+    col_search, col_lucky = st.columns([5, 1])
     
+    with col_search:
+        # Varsayılan değeri belirle: Eğer şanslı seçim varsa onun başlığı gelsin
+        default_query = ""
+        if st.session_state.lucky_selection is not None:
+            default_query = st.session_state.lucky_selection['Baslik']
+            
+        search_query = st.text_input("Akıllı Arama", value=default_query)
+        
+    with col_lucky:
+        # CSS Spacer ile hizalama
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        if st.button("🎲 Şanslıyım"):
+            if not filtered_df.empty:
+                # Rastgele seçim yap ve state'e kaydet
+                st.session_state.lucky_selection = filtered_df.sample(1).iloc[0]
+                st.rerun() # UI'ı yenile ki input dolsun
+    
+    # Pagination Logic
     if 'result_limit' not in st.session_state: st.session_state.result_limit = 10
     if 'last_query' not in st.session_state: st.session_state.last_query = ""
-    if search_query != st.session_state.last_query:
+    
+    # Arama Metni Belirleme Mantığı
+    # Eğer input'taki yazı şanslı seçimin başlığına eşitse, arama için açıklamayı kullan (daha iyi sonuç için)
+    # Değilse (kullanıcı elle bir şey yazdıysa), yazdığını kullan.
+    query_text_for_model = search_query
+    
+    if st.session_state.lucky_selection is not None and search_query == st.session_state.lucky_selection['Baslik']:
+        query_text_for_model = st.session_state.lucky_selection['Aciklama']
+        st.success(f"🎲 **Şansına bu çıktı:** {st.session_state.lucky_selection['Baslik']}")
+
+    # Limit Sıfırlama
+    # Eğer sorgu değişirse limiti başa al (Sorgu değişti mi kontrolü)
+    if query_text_for_model != st.session_state.last_query:
         st.session_state.result_limit = 10
-        st.session_state.last_query = search_query
+        st.session_state.last_query = query_text_for_model
 
     if not filtered_df.empty:
         display_df = filtered_df.copy()
         
-        if search_query:
-            query_vec = model.encode([search_query])
+        if query_text_for_model:
+            query_vec = model.encode([query_text_for_model])
             full_sim_scores = np.dot(embeddings, query_vec.T).flatten()
             df['Benzerlik'] = full_sim_scores
             display_df['Benzerlik'] = df.loc[display_df.index, 'Benzerlik']
             display_df = display_df.sort_values(by='Benzerlik', ascending=False)
-            st.write(f"**'{search_query}'** için sonuçlar ({len(display_df)} kayıt):")
+            
+            # Şanslı butonuna basıldıysa başlık farklı olsun
+            if st.session_state.lucky_selection is not None and search_query == st.session_state.lucky_selection['Baslik']:
+                 st.write(f"**'{st.session_state.lucky_selection['Baslik']}'** ve benzerleri:")
+            else:
+                 st.write(f"**'{search_query}'** için sonuçlar ({len(display_df)} kayıt):")
+
         else:
             label = "VE" if use_and_logic else "VEYA"
             msg = f"🏷️ **Seçili etiketlere ({label}) göre**" if selected_tags else "Tüm kayıtlar:"
@@ -232,21 +273,20 @@ with tab1:
         results = display_df.head(st.session_state.result_limit)
         
         if not results.empty:
-            if 'Benzerlik' in results.columns and search_query:
+            if 'Benzerlik' in results.columns and query_text_for_model:
                 min_s, max_s = results['Benzerlik'].min(), results['Benzerlik'].max()
                 denom = max_s - min_s
             else:
-                denom = 1 # Hata önlemek için
+                denom = 1 
 
             for index, row in results.iterrows():
                 score_text = ""
-                if search_query and 'Benzerlik' in row:
+                if query_text_for_model and 'Benzerlik' in row:
                     sc = row['Benzerlik']
                     norm = (sc - min_s) / denom if denom != 0 else sc
                     st.progress(max(0.0, min(1.0, float(norm))))
                     score_text = f"(Skor: {sc:.2f})"
                 
-                # Standart sade görünüm
                 st.info(f"**{row['Baslik']}** {score_text} | 🏷️ {row['Tags']}\n\n{row['Aciklama']}\n\n[🔗 Git]({row['Link']})")
 
             if st.session_state.result_limit < total_results:
@@ -263,6 +303,10 @@ with tab2:
         label = "VE" if use_and_logic else "VEYA"
         msg = f"🌌 Galaksi **{', '.join(selected_tags)}** ({label})" if selected_tags else "🌌 Galaksi Görünümü"
         st.write(msg)
+        
+        # GÖRSELLEŞTİRME NOTU:
+        # Renkler (Tags) kategorik olarak ayrışsa da, 
+        # x,y,z konumları içerik benzerliğine göre belirlenir.
         fig = px.scatter_3d(
             filtered_df, x='x', y='y', z='z', color='Tags', hover_name='Baslik',
             hover_data={'Aciklama': True, 'Link': True, 'Tags': True, 'x': False, 'y': False, 'z': False},
