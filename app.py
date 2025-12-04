@@ -9,38 +9,42 @@ import os
 # --- SAYFA AYARLARI ---
 st.set_page_config(page_title="My Semantic Brain", layout="wide")
 
-# --- 1. MODELİ YÜKLE (ÖNBELLEĞE ALALIM Kİ HIZLI OLSUN) ---
+# --- 1. MODELİ YÜKLE ---
 @st.cache_resource
 def load_model():
     return SentenceTransformer('all-MiniLM-L6-v2')
 
 model = load_model()
 
-# --- 2. VERİ YÖNETİMİ ---
+# --- 2. YARDIMCI FONKSİYONLAR ---
+def clean_tags(tag_input):
+    """Tagleri temizler, sıralar ve duplicate'leri uçurur."""
+    if not tag_input or tag_input.strip() == "":
+        return "genel"
+    # Virgülle ayır, boşlukları sil, küçük harfe çevir
+    tags = [t.strip().lower() for t in tag_input.split(',')]
+    # Set ile tekrarları kaldır, sonra alfabetik sırala
+    tags = sorted(list(set(tags)))
+    # Tekrar string yap
+    return ", ".join(tags)
+
+# --- 3. VERİ YÖNETİMİ ---
 DATA_FILE = "data.csv"
 
 def load_data():
     if not os.path.exists(DATA_FILE):
-        # Eğer dosya yoksa örnek veriyle oluşturalım
+        # Örnek veri seti
         data = {
-            "Baslik": [
-                "ElevenLabs", "Midjourney", "Notion AI", "ChatGPT", "Descript", 
-                "TensorFlow", "PyTorch", "Unity", "Unreal Engine", "Blender"
-            ],
-            "Link": ["https://elevenlabs.io", "#", "#", "#", "#", "#", "#", "#", "#", "#"],
+            "Baslik": ["ElevenLabs", "Midjourney", "Notion AI", "ChatGPT", "Blender"],
+            "Link": ["https://elevenlabs.io", "#", "#", "#", "#"],
             "Aciklama": [
                 "Yapay zeka ile ses kopyalama ve metinden ses üretme aracı.",
                 "Metinden görsel oluşturan yapay zeka sanat aracı.",
-                "Not alma uygulaması içinde yapay zeka asistanı, özet çıkarma.",
-                "Her türlü konuda sohbet edebilen, kod yazan yapay zeka asistanı.",
-                "Ses ve video düzenleme, transkript çıkarma, ses iyileştirme.",
-                "Google tarafından geliştirilen açık kaynaklı makine öğrenmesi kütüphanesi.",
-                "Facebook tarafından geliştirilen derin öğrenme kütüphanesi.",
-                "Oyun geliştirme motoru, 3D ve 2D oyunlar için.",
-                "Yüksek grafikli oyunlar ve simülasyonlar için oyun motoru.",
-                "3 boyutlu modelleme, animasyon ve render programı."
+                "Not alma uygulaması içinde yapay zeka asistanı.",
+                "Sohbet edebilen, kod yazan yapay zeka asistanı.",
+                "3 boyutlu modelleme ve animasyon programı."
             ],
-            "Tags": ["AI, Ses", "AI, Görsel", "AI, Ofis", "AI, Chat", "AI, Video", "Kod, ML", "Kod, DL", "Oyun, 3D", "Oyun, 3D", "Tasarım, 3D"]
+            "Tags": ["ai, ses, tool", "ai, görsel, sanat", "ai, ofis, not", "ai, chat, bot", "tasarım, 3d, modelleme"]
         }
         df = pd.DataFrame(data)
         df.to_csv(DATA_FILE, index=False)
@@ -48,13 +52,15 @@ def load_data():
 
 df = load_data()
 
-# --- 3. VEKTÖR HESAPLAMA VE 3D KOORDİNATLAR ---
+# --- 4. VEKTÖR HESAPLAMA (TAGLER DAHİL!) ---
 def process_embeddings(dataframe):
-    # Açıklamaları vektöre çevir
-    embeddings = model.encode(dataframe['Aciklama'].tolist())
+    # BURASI KRİTİK: Açıklama + Tagleri birleştiriyoruz.
+    # Böylece Tagler de konuma (x, y, z) etki ediyor.
+    combined_text = dataframe['Aciklama'] + ". " + dataframe['Tags']
     
-    # Boyut İndirgeme (384 Boyuttan -> 3 Boyuta)
-    # Veri azsa hata vermemesi için n_neighbors ayarı
+    embeddings = model.encode(combined_text.tolist())
+    
+    # UMAP Ayarları
     n_neighbors = min(15, len(dataframe) - 1) 
     if n_neighbors < 2: n_neighbors = 2
     
@@ -66,62 +72,91 @@ def process_embeddings(dataframe):
     dataframe['z'] = projections[:, 2]
     return dataframe, embeddings
 
-df, embeddings = process_embeddings(df)
+# Veri varsa işle, yoksa boş geç
+if not df.empty:
+    df, embeddings = process_embeddings(df)
+else:
+    embeddings = np.array([])
 
 # --- ARAYÜZ ---
 st.title("🧠 My Semantic Brain")
 
-# Yan Panel: Yeni Veri Ekleme
+# --- SIDEBAR (VERİ EKLEME) ---
 with st.sidebar:
     st.header("Yeni İçerik Ekle")
     new_title = st.text_input("Başlık")
     new_link = st.text_input("Link")
-    new_desc = st.text_area("Açıklama (Detaylı yaz!)")
-    new_tags = st.text_input("Etiketler")
+    new_desc = st.text_area("Açıklama (Ne kadar detay, o kadar iyi konum)")
+    raw_tags = st.text_input("Etiketler (Virgülle ayır: ai, ses, tool)")
     
     if st.button("Kaydet"):
-        new_data = pd.DataFrame({
-            "Baslik": [new_title], "Link": [new_link], 
-            "Aciklama": [new_desc], "Tags": [new_tags]
-        })
-        # CSV'ye ekle
-        new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
-        st.success("Eklendi! Listeyi güncellemek için sayfayı yenile (F5).")
+        if new_title and new_desc: # Boş kaydetmeyi engelle
+            # 1. Tagleri temizle
+            final_tags = clean_tags(raw_tags)
+            
+            # 2. DataFrame oluştur
+            new_data = pd.DataFrame({
+                "Baslik": [new_title], "Link": [new_link], 
+                "Aciklama": [new_desc], "Tags": [final_tags]
+            })
+            
+            # 3. Kaydet
+            new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
+            st.success(f"Eklendi! Tagler: {final_tags}")
+            st.rerun() # Sayfayı yenile ki yeni veri haritaya düşsün
+        else:
+            st.warning("Başlık ve Açıklama zorunludur!")
 
-# Ana Ekran: Sekmeler
-tab1, tab2 = st.tabs(["🔍 Semantik Arama & Liste", "🌌 3D Uzay (Galaksi)"])
+# --- ANA EKRAN ---
+tab1, tab2 = st.tabs(["🔍 Liste & Arama", "🌌 Semantik Galaksi"])
 
 with tab1:
-    search_query = st.text_input("Ne arıyorsun? (Örn: 'Müzik yapan programlar')", "")
+    search_query = st.text_input("Akıllı Arama (Örn: 'Ses yapan robotlar')", "")
     
-    if search_query:
-        # --- HİBRİT ARAMA MOTORU ---
-        # 1. Sorguyu vektöre çevir
+    if search_query and not df.empty:
+        # HİBRİT ARAMA (Sorguyu da vektöre çevirip kıyaslıyoruz)
         query_vec = model.encode([search_query])
-        
-        # 2. Benzerlik hesapla (Cosine Similarity)
-        # Basit matris çarpımı ile benzerlik skoru
         sim_scores = np.dot(embeddings, query_vec.T).flatten()
         
-        # 3. Skorları dataframe'e ekle ve sırala
         df['Benzerlik'] = sim_scores
         results = df.sort_values(by='Benzerlik', ascending=False)
         
         st.write(f"**'{search_query}'** için sonuçlar:")
-        # En alakalı 5 sonucu göster
         for index, row in results.head(5).iterrows():
             score = row['Benzerlik']
-            st.info(f"**{row['Baslik']}** (Skor: {score:.2f})\n\n{row['Aciklama']}\n\n[Linke Git]({row['Link']})")
+            # Skor barı ekleyelim
+            st.progress(float(score) if score > 0 else 0)
+            st.info(f"**{row['Baslik']}** (Skor: {score:.2f}) | 🏷️ {row['Tags']}\n\n{row['Aciklama']}\n\n[🔗 Git]({row['Link']})")
     else:
-        st.dataframe(df[['Baslik', 'Tags', 'Aciklama', 'Link']])
+        st.dataframe(df)
 
 with tab2:
-    st.write("Benzer konular birbirine daha yakın konumlanmıştır.")
-    fig = px.scatter_3d(
-        df, x='x', y='y', z='z',
-        color='Tags', 
-        hover_name='Baslik',
-        hover_data={'Aciklama': True, 'Link': True, 'x': False, 'y': False, 'z': False},
-        title="İçerik Uzayı"
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    if not df.empty:
+        st.write("🌌 Benzer açıklamalar ve **benzer tagler** birbirini çeker.")
+        
+        # KOYU MOD GÖRSELLEŞTİRME
+        fig = px.scatter_3d(
+            df, x='x', y='y', z='z',
+            color='Tags', 
+            hover_name='Baslik',
+            hover_data={'Aciklama': True, 'Link': True, 'Tags': True, 'x': False, 'y': False, 'z': False},
+            template="plotly_dark",
+            opacity=0.9,
+            size_max=15
+        )
+        
+        # Tamamen temiz, uzay görünümü
+        fig.update_layout(
+            scene=dict(
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False),
+                zaxis=dict(visible=False),
+                bgcolor='rgba(0,0,0,0)'
+            ),
+            margin=dict(l=0, r=0, b=0, t=10),
+            legend=dict(yanchor="top", y=0.9, xanchor="left", x=0.1)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.write("Henüz veri yok.")
