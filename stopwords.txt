@@ -1,0 +1,100 @@
+# Türkçe Etkisiz Kelimeler (Stop Words)
+# Bu dosya app.py tarafından okunur ve analiz sırasında filtrelenir
+
+# Bağlaçlar
+ve
+ile
+veya
+ya
+yahut
+ki
+
+# Edatlar  
+için
+den
+dan
+e
+a
+de
+da
+
+# Zamirler
+bu
+şu
+o
+ben
+sen
+biz
+siz
+onlar
+her
+bazı
+birkaç
+hiç
+
+# Belirteçler
+bir
+iki
+çok
+az
+daha
+en
+çoğu
+hep
+
+# Yardımcı Fiiller
+olan
+oldu
+olur
+olarak
+ama
+fakat
+ancak
+lakin
+
+# Zarf ve Diğerleri
+gibi
+kadar
+dahi
+sadece
+yalnız
+bile
+değil
+mi
+mı
+mu
+mü
+dir
+dır
+dur
+dür
+tir
+tır
+tur
+tür
+
+# Sık Kullanılan Dolgu Kelimeleri
+işte
+yani
+hani
+şey
+böyle
+öyle
+nasıl
+ne
+neden
+niçin
+kim
+nerede
+nereye
+nereden
+
+# Özel Eklemeler (İsteğe Göre Düzenlenebilir)
+çünkü
+eğer
+ise
+hem
+sonra
+önce
+artık
+zaten
