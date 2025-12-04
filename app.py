@@ -110,10 +110,49 @@ with st.sidebar:
     st.divider()
 
     st.header("➕ Yeni İçerik Ekle")
-    new_title = st.text_input("Başlık")
-    new_link = st.text_input("Link")
-    new_desc = st.text_area("Açıklama")
-    raw_tags = st.text_input("Etiketler (ai, ses)")
+
+    # --- HATA DÜZELTME & FORM TEMİZLEME MANTIĞI ---
+    # Eğer bir önceki turda kayıt yapıldıysa (data_saved=True), 
+    # widgetlar çizilmeden ÖNCE içlerini temizliyoruz.
+    if st.session_state.get("data_saved", False):
+        st.session_state.new_title_input = ""
+        st.session_state.new_link_input = ""
+        st.session_state.new_desc_input = ""
+        st.session_state.new_tags_input = ""
+        st.session_state.data_saved = False # Bayrağı indiriyoruz
+
+    # Widget'lara key ekledik ki session_state üzerinden kontrol edebilelim
+    new_title = st.text_input("Başlık", key="new_title_input")
+    new_link = st.text_input("Link", key="new_link_input")
+    new_desc = st.text_area("Açıklama", key="new_desc_input")
+    
+    # --- AUTO-TAGGING ---
+    if "new_tags_input" not in st.session_state:
+        st.session_state.new_tags_input = ""
+
+    if st.button("✨ Tag Öner"):
+        if new_desc and not df.empty:
+            all_existing_tags = get_unique_tags(df)
+            if all_existing_tags:
+                desc_vec = model.encode([new_desc])
+                tags_vec = model.encode(all_existing_tags)
+                sims = np.dot(tags_vec, desc_vec.T).flatten()
+                
+                top_indices = np.argsort(sims)[::-1][:5]
+                suggested_tags = [all_existing_tags[i] for i in top_indices if sims[i] > 0.25]
+                
+                if suggested_tags:
+                    result_str = ", ".join(suggested_tags)
+                    st.session_state.new_tags_input = result_str
+                    st.toast(f"Önerilen Etiketler: {result_str}", icon="🤖")
+                else:
+                    st.toast("Yeterince benzer bir etiket bulunamadı.", icon="🤷‍♂️")
+            else:
+                st.warning("Henüz hiç etiket yok.")
+        elif not new_desc:
+            st.warning("Lütfen önce bir açıklama yaz.")
+
+    raw_tags = st.text_input("Etiketler (ai, ses)", key="new_tags_input")
     
     if st.button("Kaydet"):
         if new_title and new_desc: 
@@ -123,6 +162,11 @@ with st.sidebar:
                 "Aciklama": [new_desc], "Tags": [final_tags]
             })
             new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
+            
+            # CRITICAL FIX: Burada widget değerini değiştirmek yerine
+            # bir sonraki turda temizlenmesi için bayrak kaldırıyoruz.
+            st.session_state.data_saved = True 
+            
             st.success(f"Eklendi!")
             st.rerun() 
         else:
@@ -224,15 +268,12 @@ with tab3:
     else:
         st.write("Veri yok.")
 
-# --- TAB 4: ANALİZ (GÜNCELLENMİŞ) ---
+# --- TAB 4: ANALİZ ---
 with tab4:
     st.header("☁️ İçerik Analizi")
-    
-    # 1. Veri Kaynağı Seçimi (Sidebar filtresinden etkilenir)
     target_df = filtered_df if not filtered_df.empty else pd.DataFrame()
 
     if not target_df.empty:
-        # Analiz Tipi Seçimi (Radio Button)
         analysis_type = st.radio(
             "Analiz Kaynağı:", 
             ["Etiketler", "Açıklamalar"], 
@@ -240,27 +281,21 @@ with tab4:
             help="'Etiketler' genel kategorileri, 'Açıklamalar' ise içerik detaylarını analiz eder."
         )
         
-        # Kelime Listesi Hazırlama
         stopwords = load_stopwords()
         words_list = []
         
         if analysis_type == "Etiketler":
-            # Virgülle ayrılmış etiketleri parçala
             raw_series = target_df['Tags'].fillna("").astype(str).str.split(',')
             words_list = [item.strip() for sublist in raw_series for item in sublist if item.strip()]
             
         else: # Açıklamalar
-            # Tüm metni birleştir, küçük harfe çevir
             full_text = " ".join(target_df['Aciklama'].fillna("").astype(str)).lower()
-            # Noktalama işaretlerini basitçe temizle (daha gelişmiş regex de kullanılabilir)
             for char in [".", ",", "!", "?", ":", ";", "(", ")", "\"", "'"]:
                 full_text = full_text.replace(char, " ")
             
-            # Stopwords temizliği
             raw_words = full_text.split()
             words_list = [w for w in raw_words if w not in stopwords and len(w) > 2]
 
-        # 2. İstatistikler
         if words_list:
             word_counts = pd.Series(words_list).value_counts().reset_index()
             word_counts.columns = ['Kelime', 'Frekans']
@@ -271,47 +306,35 @@ with tab4:
             with col1:
                 st.subheader("🥧 Dağılım (Pie Chart)")
                 fig_pie = px.pie(
-                    top_10, 
-                    values='Frekans', 
-                    names='Kelime', 
+                    top_10, values='Frekans', names='Kelime', 
                     title=f"En Çok Geçen {analysis_type} (Top 10)",
-                    template="plotly_dark",
-                    hole=0.4 # Donut chart stili
+                    template="plotly_dark", hole=0.4
                 )
                 st.plotly_chart(fig_pie, use_container_width=True)
 
             with col2:
                 st.subheader("📊 Sıralama (Bar Chart)")
                 fig_bar = px.bar(
-                    top_10, 
-                    x='Frekans', 
-                    y='Kelime', 
-                    orientation='h',
-                    template="plotly_dark",
-                    color='Frekans'
+                    top_10, x='Frekans', y='Kelime', orientation='h',
+                    template="plotly_dark", color='Frekans'
                 )
                 fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_bar, use_container_width=True)
 
-            # 3. Kelime Bulutu (Word Cloud)
             st.subheader(f"☁️ {analysis_type} Bulutu")
             text_for_cloud = " ".join(words_list)
             
             wordcloud = WordCloud(
-                width=800, height=400,
-                background_color='black',
-                colormap='turbo', # Biraz daha canlı renkler
-                min_font_size=10
+                width=800, height=400, background_color='black',
+                colormap='turbo', min_font_size=10
             ).generate(text_for_cloud)
 
             fig, ax = plt.subplots(figsize=(10, 5))
             ax.imshow(wordcloud, interpolation='bilinear')
             ax.axis("off")
             st.pyplot(fig)
-            plt.close(fig) # Memory leak önlemi
-            
+            plt.close(fig) 
         else:
             st.warning("Analiz edilecek yeterli kelime bulunamadı.")
-            
     else:
         st.info("Analiz için veri yok veya filtreleme sonucu boş.")
