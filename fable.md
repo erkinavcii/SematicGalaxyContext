@@ -1,151 +1,292 @@
-# 🔍 Semantic Galaxy — Genel Proje Değerlendirme Raporu
+# 🔍 Semantic Galaxy — Fable Raporu (Yürütülebilir Format)
 
-> Bu rapor, projenin mevcut durumunun (v0.8.1) bağımsız bir teknik incelemesidir.
-> Kapsam: kod kalitesi, mimari, ML pipeline, deploy durumu ve CV/portfolyo perspektifi.
-> Tarih: 2026-07-09 · İnceleyen: Claude (Fable 5)
-
----
-
-## 1. Özet Değerlendirme
-
-**Genel not: 7/10 — Hobi projesi olarak başarılı, portfolyo projesi olarak umut verici, birkaç kritik eksikle.**
-
-Semantic Galaxy; sentence-transformers → UMAP → Plotly 3D zincirini uçtan uca çalıştıran,
-Streamlit Cloud'da canlı yayında olan, gerçek bir problemi (kaydedip unutma) çözen bir uygulama.
-Tek dosyalık bir Streamlit uygulaması için özellik yoğunluğu etkileyici: semantik arama,
-hibrit tag filtresi (AND/OR), embedding tabanlı tag önerisi, 3D görselleştirme, CRUD editör,
-yedekleme/geri yükleme, word cloud analitiği ve pagination.
-
-En büyük güçlü yanı **fikir ve dokümantasyon kültürü**, en büyük zayıflığı ise
-**mimari (tek dosya + CSV) ve deploy'daki veri kalıcılığı sorunu**.
+> **Bu raporun amacı**: Daha ucuz/zayıf bir model (veya proje sahibi) bu dosyayı tek başına
+> okuyup, başka hiçbir bağlama ihtiyaç duymadan Backlog'daki görevleri uygulayabilsin.
+> Yargı (mimari seçimler, öncelikler) bu raporda verilmiştir; görevler sadece icra gerektirir.
+>
+> **Rapor tarihi**: 2026-07-09 · **İnceleyen**: Claude (Fable 5)
+> **Analiz edilen durum**: commit `14aee84` · **Quick-win'ler sonrası durum**: commit `487258d`
+> ⚠️ Backlog'daki satır numaraları `487258d` anına aittir; dosya değiştiyse fonksiyon adına göre bul.
 
 ---
 
-## 2. 👍 İyi Yapılan Şeyler
+## 1. Snapshot
 
-### 2.1 Uçtan uca çalışan ML pipeline
-Embedding üretimi, boyut indirgeme (UMAP 384D→3D), benzerlik hesabı ve görselleştirme
-tek akışta ve gerçekten çalışıyor. Çoğu hobi projesi "model yükledim, print ettim"
-seviyesinde kalır; burada ML çıktısı gerçek bir UX'e bağlanmış.
+**Genel not: 7/10** — Uçtan uca çalışan ML pipeline'lı (sentence-transformers → UMAP → Plotly 3D),
+Streamlit Cloud'da canlı, tek dosyalık (`app.py`, ~410 satır) bookmark yönetim uygulaması.
 
-### 2.2 Akıllıca UX dokunuşları
-- **✨ Tag Öner**: Açıklamanın embedding'ini mevcut tag'lerle karşılaştırıp öneri yapmak
-  basit ama zekice bir özellik — projenin en özgün fikirlerinden.
-- **🎲 Şanslıyım**: Rastgele seçilen kaydın *açıklamasıyla* arama yaparak "benzerlerini de göster"
-  davranışı — düşünülmüş bir detay.
-- Pagination (`Daha Fazla Göster`), toast bildirimleri, benzerlik skoru progress bar'ları,
-  form temizleme (session_state ile) — hepsi kullanıcı deneyimini önemseyen dokunuşlar.
+**Yığın**: Python 3.10 (deploy) / 3.11 (lokal venv), Streamlit, pandas, sentence-transformers 5.x (venv),
+umap-learn, Plotly, WordCloud. Depolama: `data.csv` (repo içinde).
 
-### 2.3 Doğru Streamlit pratikleri
-- `@st.cache_resource` ile model, `@st.cache_data` ile embedding cache'i doğru ayrılmış.
-- Veri değişince `process_embeddings.clear()` ile cache invalidation yapılıyor — bu detayı
-  çoğu Streamlit geliştiricisi atlar.
-- `n_neighbors = min(15, len(df)-1)` gibi küçük veri setine karşı savunma kodları var.
+**Güçlü**: embedding tabanlı tag önerisi, hibrit arama (tag AND/OR + semantik), cache yönetimi,
+CRUD editör, yedekleme, conventional commits, ekran görüntülü README.
 
-### 2.4 Dokümantasyon ve süreç disiplini
-- README rozetli, ekran görüntülü, problem-çözüm anlatımlı — portfolyo için doğru format.
-- Conventional Commits kullanımı (`feat:`, `fix:`, `perf:`) tutarlı.
-- FUTURE_VISION, FUTURISTIC_UPDATES, IMPLEMENTATION_PLAN gibi dosyalarda ürün düşüncesi var:
-  N-gram analizi, boşluk analizi, Instagram hibrit import fikri gibi gerçekten özgün fikirler
-  yazıya dökülmüş. Bu, "kod yazan" ile "ürün düşünen" geliştirici arasındaki farkı gösterir.
+**Zayıf**: tek dosya mimarisi, CSV depolama, test/CI yok, canlı demoda auth yok
+(herkes veri silebilir), her veri değişiminde tüm embeddings + UMAP yeniden hesaplanıyor.
 
-### 2.5 Veri hijyeni
-Tag normalizasyonu (lowercase, sort, dedup), NaN kontrolü, CSV import'ta kolon validasyonu,
-boş başlık/açıklama engelleme — küçük ama olgun detaylar.
+**Bilinen ortam sorunu (lokal makine)**: Bu bilgisayarda huggingface.co'ya SSL doğrulamalı erişim
+engelli (`CERTIFICATE_VERIFY_FAILED`, muhtemelen ağ/proxy TLS araya girmesi). Yeni model lokalde
+indirilemez; kodda `local_files_only` fallback var, uygulama cache'teki modelle çalışır.
+Streamlit Cloud'da sorun yok. Kalıcı çözüm: farklı ağda bir kez
+`python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"`
+çalıştırıp modeli cache'e almak.
 
 ---
 
-## 3. 👎 Sorunlu / Zayıf Yerler
+## 2. Hemen Uygulandı ✅
 
-### 3.1 🔴 KRİTİK: Streamlit Cloud'da veri kalıcı değil
-Uygulama veriyi yerel `data.csv`'ye yazıyor. Streamlit Cloud'un dosya sistemi **geçicidir**:
-uygulama uyuyup uyandığında veya yeniden deploy olduğunda **UI'dan eklenen tüm kayıtlar silinir**,
-repo'daki CSV'ye geri döner. Yani canlı demo'da "Kaydet" butonu aslında kalıcı çalışmıyor.
-Ayrıca uygulama herkese açık ve auth yok — **herhangi bir ziyaretçi tüm veritabanını silebilir**
-(Veri Yönetimi sekmesi + yedekten yükleme herkese açık).
+Bu düzeltmeler rapor yazılırken uygulandı, doğrulandı ve commit'lendi:
 
-### 3.2 🔴 Model seçimi Türkçe veriyle uyumsuz
-`all-MiniLM-L6-v2` ağırlıklı olarak **İngilizce** eğitilmiş bir model; veri setindeki açıklamalar
-ise çoğunlukla Türkçe. Bu, semantik aramanın kalitesini ciddi düşürür — "müzik yapan robotlar"
-gibi Türkçe sorgular İngilizce modelde zayıf temsil edilir. Çok dilli bir model
-(`paraphrase-multilingual-MiniLM-L12-v2` veya `distiluse-base-multilingual-cased-v1`)
-tek satırlık değişiklikle arama kalitesini gözle görülür şekilde artırır.
-
-### 3.3 🟠 "Cosine similarity" aslında cosine değil
-README cosine similarity diyor ama kod ham `np.dot()` kullanıyor ve `model.encode()`
-varsayılan olarak **normalize edilmemiş** vektör döndürür. Yani skor, vektör uzunluğundan
-etkileniyor — uzun açıklamalı kayıtlar haksız avantaj/dezavantaj alabiliyor.
-Çözüm tek parametre: `model.encode(..., normalize_embeddings=True)`.
-
-### 3.4 🟠 Tek dosyada 400 satır — mimari yok
-`app.py` içinde veri katmanı, ML pipeline ve UI iç içe. Bu boyutta hâlâ yönetilebilir ama
-roadmap'teki özellikler (LLM, FastAPI, Telegram bot) eklendikçe sürdürülemez hale gelir.
-Test yazmayı da imkânsızlaştırıyor çünkü hiçbir mantık import edilebilir değil.
-
-### 3.5 🟠 Her veri değişiminde her şey yeniden hesaplanıyor
-Bir kayıt eklemek, **tüm** veri setinin embedding'ini ve UMAP projeksiyonunu sıfırdan
-hesaplatıyor. 13 kayıtta sorun değil; 500+ kayıtta her ekleme 10+ saniye bekletir.
-Ayrıca UMAP her seferinde yeniden fit edildiği için galaksi haritası her ekleme sonrası
-tamamen değişiyor — kullanıcının uzamsal hafızası ("AI köşesi şuradaydı") her seferinde sıfırlanıyor.
-
-### 3.6 🟡 Küçük kod sorunları
-- `clean_tags` üzerinde `@st.cache_data` gereksiz — string işlemi cache maliyetinden ucuz.
-- `load_stopwords` içinde çıplak `except:` — hatayı yutar, teşhisi zorlaştırır.
-- Skor normalizasyonu (`min_s`, `max_s`) tüm sonuç kümesi yerine sadece görünen sayfa
-  (`head(limit)`) üzerinden hesaplanıyor — "Daha Fazla Göster" dedikçe bar oranları kayar.
-- 3D grafikte renk `Tags` string'inin tamamına göre: `"ai, ses"` ve `"ai, görsel"` ayrı renk.
-  Tag sayısı arttıkça legend patlar; ilk tag'e veya cluster'a göre renklendirme daha doğru.
-- `requirements.txt`'te bir paket `>=` diğerleri `==` — tekrarlanabilir build garanti değil.
-- Hiç test, linter, CI yok. Type hint ve docstring yok.
-- Repo adındaki yazım hatası: "**Sematic**GalaxyContext" → "Semantic". CV'de göze batar;
-  README başlıkta doğru yazıldığı için tutarsızlık da yaratıyor.
-
----
-
-## 4. 💡 Önerilen İyileştirmeler (Öncelik Sırasıyla)
-
-### Hemen yapılabilir (1-2 saat, yüksek etki)
-| # | İyileştirme | Etki |
+| Değişiklik | Commit | Doğrulama |
 |---|---|---|
-| 1 | `normalize_embeddings=True` ekle | Arama skorları matematiksel olarak doğru olur |
-| 2 | Çok dilli modele geç (`paraphrase-multilingual-MiniLM-L12-v2`) | Türkçe arama kalitesi ciddi artar |
-| 3 | README'ye "demo verisi kalıcı değildir" notu + Veri Yönetimi'ne basit parola (`st.secrets`) | Canlı demo'nun herkes tarafından silinmesini önler |
-| 4 | Tüm sürümleri sabitle, `except:` → `except OSError:` | Tekrarlanabilirlik + teşhis edilebilirlik |
+| Çok dilli modele geçiş (`paraphrase-multilingual-MiniLM-L12-v2`) + indirilemezse cache'teki `all-MiniLM-L6-v2`'ye `local_files_only=True` fallback | `07e9771` | Fallback lokalde tetiklenip model yüklendi; AppTest ile uygulama 0 exception ile çalıştı |
+| Tüm `model.encode` çağrılarına `normalize_embeddings=True` — dot product artık gerçek cosine similarity | `07e9771` | Vektör normları 1.0000 ölçüldü |
+| Benzerlik bar normalizasyonu sayfa dilimi (`results`) yerine tüm sonuç kümesi (`display_df`) üzerinden — "Daha Fazla Göster" dedikçe barlar kaymaz | `07e9771` | Kod incelemesi |
+| `load_stopwords` içindeki çıplak `except:` → `except OSError:` | `07e9771` | Kod incelemesi |
+| README: model bilgisi güncellendi + "demo verisi kalıcı değildir" uyarısı eklendi | `487258d` | — |
 
-### Orta vade (CV değerini asıl artıracak işler)
-1. **Modülerleştirme**: `src/data.py` (CSV/DB katmanı), `src/engine.py` (embedding+arama),
-   `app.py` (sadece UI). Bu tek başına projeyi "script" görünümünden "yazılım" görünümüne taşır.
-2. **SQLite'a geçiş**: CSV yerine tek dosyalık SQLite — eşzamanlılık, tip güvenliği ve
-   embedding'leri BLOB olarak saklayıp **artımlı hesaplama** (sadece yeni kaydın vektörünü üret) kapısını açar.
-3. **Test + CI**: `clean_tags`, tag filtreleme, arama sıralaması için pytest testleri +
-   GitHub Actions'da ruff + pytest badge'i. İşe alım gözünden en güçlü sinyallerden biri.
-4. **Cluster tabanlı renklendirme**: HDBSCAN/KMeans ile otomatik konu kümeleri; 3D haritada
-   renk = küme. Roadmap'teki "boşluk analizi" fikrinin de temelini oluşturur.
-5. **İngilizce README** (veya iki dilli): Uluslararası başvurular için şart.
-
-### Uzun vade (roadmap'le uyumlu)
-- FastAPI backend + Telegram share bot (FUTURISTIC_UPDATES'te zaten planlanmış — plan sağlam).
-- URL'den otomatik metadata çekme (başlık/açıklama otomatik dolsun).
-- LLM ile otomatik açıklama zenginleştirme ve tag üretimi.
+> **Not**: Streamlit Cloud ilk deploy'da yeni modeli (~470MB) indirecek; ilk açılış birkaç dakika
+> sürebilir, sonrası normaldir. Model 384D çıktı verdiği için UMAP/arama kodu değişikliği gerekmedi.
 
 ---
 
-## 5. 🎓 CV / Portfolyo Perspektifi
+## 3. Uygulanabilir Backlog
 
-**Bu proje CV'de anlatmaya değer** — çünkü şu hikâyeyi taşıyor:
-*"Kişisel bir problemimi tanımladım, NLP/embedding teknolojisiyle çözdüm, buluta deploy ettim,
-sürüm sürüm geliştirdim ve yol haritasını belgeledim."* Bu, junior/mid seviye için güçlü bir anlatı.
+Görevler **bağımlılık sırasına** göredir. Her görev kendi kendine yeter.
 
-CV'de vurgulanması gerekenler:
-- Semantik arama + embedding tabanlı tag önerisi (asıl teknik derinlik burada)
-- UMAP ile 384 boyuttan 3D'ye interaktif görselleştirme
-- Canlı deploy linki + ekran görüntüleri
+---
 
-Mülakatta gelecek muhtemel sorulara hazırlıklı olunmalı:
-- "Neden CSV? Neden SQLite değil?" → dürüst cevap: MVP hızı; roadmap'te geçiş planı var demek yeterli.
-- "Türkçe veriyle İngilizce model?" → bu rapordaki 3.2 maddesi sorulmadan düzeltilmiş olursa çok daha iyi.
-- "Test nerede?" → en zayıf nokta; küçük bir test paketi bile eklemek bu soruyu kapatır.
+### Görev 1: Canlı demoya yönetici parolası
 
-**Sonuç**: Mevcut haliyle "ilginç hobi projesi". Modülerleştirme + testler + çok dilli model +
-kalıcılık düzeltmesiyle "işe alım görüşmesi ayarlatan portfolyo projesi" olur. Aradaki mesafe
-yaklaşık 2-3 hafta sonu çalışması.
+- **Neden**: Uygulama herkese açık; herhangi bir ziyaretçi Veri Yönetimi sekmesinden tüm veriyi
+  silebilir veya yedekten yükleme ile üzerine yazabilir. En acil güvenlik açığı bu.
+- **Bağımlılık**: yok
+- **Adımlar**:
+  1. `app.py` içinde `DATA_FILE = "data.csv"` satırının (satır ~60) hemen altına ekle:
+     ```python
+     def is_admin():
+         # Parola tanımlı değilse (lokal kullanım) herkes admindir
+         expected = st.secrets.get("admin_password", "")
+         if not expected:
+             return True
+         entered = st.session_state.get("admin_pw_input", "")
+         return entered == expected
+     ```
+  2. Sidebar'da `st.header("🏷️ Filtrele")` satırının üstüne ekle:
+     ```python
+     if st.secrets.get("admin_password", ""):
+         st.text_input("🔑 Yönetici Parolası", type="password", key="admin_pw_input")
+     ```
+  3. Şu üç yazma noktasını `if not is_admin(): st.error("Bu işlem için yönetici parolası gerekli."); st.stop()` benzeri korumayla sarmala (buton bloklarının en başına koy):
+     - `if st.button("Kaydet"):` bloğu (satır ~158)
+     - `uploaded_file is not None` bloğu (satır ~182 sonrası)
+     - `if st.button("💾 Değişiklikleri Kaydet"):` bloğu (satır ~339)
+  4. Streamlit Cloud → App settings → Secrets kısmına `admin_password = "GÜÇLÜ_BİR_PAROLA"` ekle.
+     Lokalde `.streamlit/secrets.toml` **git'e commit etme** (zaten .gitignore'da).
+- **Kabul kriteri**: Parola secrets'ta tanımlıyken parolasız "Kaydet" hata verip durmalı;
+  doğru parola girilince kayıt çalışmalı. Lokalde (secrets yokken) her şey eskisi gibi çalışmalı.
+- **Süre**: 30-45 dk
+
+---
+
+### Görev 2: Modülerleştirme (UI / veri / ML katmanlarını ayır)
+
+- **Neden**: 410 satırlık tek dosya test yazmayı imkânsız kılıyor ve roadmap'teki her özellik
+  (FastAPI, Telegram bot, LLM) bu ayrımı gerektiriyor. Sonraki tüm görevlerin temeli.
+- **Bağımlılık**: Görev 1'den sonra (aynı dosyada çakışma olmasın)
+- **Adımlar**:
+  1. `src/` klasörü oluştur, içine boş `__init__.py` koy.
+  2. `src/data.py` oluştur — `app.py`'den şunları **aynen taşı** (streamlit import'u OLMASIN):
+     `clean_tags` (st.cache_data dekoratörünü SİL, gerek yok), `get_unique_tags`,
+     `load_stopwords` (st.cache_data'yı sil), `DATA_FILE`, `load_data`.
+  3. `src/engine.py` oluştur — şunları taşı: `load_model` içindeki model yükleme mantığı
+     (`get_model()` adıyla, st.warning yerine `logging.warning` + fallback aynı kalsın),
+     `process_embeddings`'in gövdesi (`compute_embeddings(df, model)` adıyla, cache dekoratörsüz),
+     tag önerisi mantığı (`suggest_tags(desc, existing_tags, model) -> list[str]` fonksiyonu olarak),
+     benzerlik hesabı (`search_scores(embeddings, query_vec) -> np.ndarray`).
+  4. `app.py`'de cache'i sarmalayıcı olarak tut:
+     ```python
+     from src import data, engine
+
+     @st.cache_resource
+     def load_model():
+         return engine.get_model()
+
+     @st.cache_data
+     def process_embeddings(df):
+         return engine.compute_embeddings(df, model)
+     ```
+     Geri kalan UI kodu aynen kalır, sadece fonksiyon çağrıları `data.clean_tags(...)` gibi olur.
+  5. Davranış DEĞİŞMEMELİ — bu görev saf taşımadır, mantık düzeltmesi yapma.
+- **Kabul kriteri**: `streamlit run app.py` açılmalı; arama, tag önerisi, kayıt ekleme,
+  3D grafik ve analiz sekmesi eskisi gibi çalışmalı. `python -c "from src import data, engine"`
+  streamlit YÜKLÜ OLMAYAN bir ortamda bile hata vermemeli (data.py için).
+- **Süre**: 45-60 dk
+
+---
+
+### Görev 3: pytest testleri + GitHub Actions CI
+
+- **Neden**: CV'ye "test edilmiş, CI'lı proje" sinyali işe alım gözünden en güçlü farklardan biri;
+  ayrıca sonraki refactor'ları (SQLite) güvenle yapmayı sağlar.
+- **Bağımlılık**: Görev 2 (import edilebilir modüller gerekli)
+- **Adımlar**:
+  1. `tests/test_data.py` oluştur:
+     ```python
+     from src.data import clean_tags, get_unique_tags
+     import pandas as pd
+
+     def test_clean_tags_normalizes():
+         assert clean_tags("  AI , ses, AI ") == "ai, ses"
+
+     def test_clean_tags_empty_returns_genel():
+         assert clean_tags("") == "genel"
+         assert clean_tags(None) == "genel"
+         assert clean_tags("nan") == "genel"
+
+     def test_get_unique_tags():
+         df = pd.DataFrame({"Tags": ["ai, ses", "ai, kod", None]})
+         assert get_unique_tags(df) == ["ai", "kod", "ses"]
+     ```
+  2. `tests/test_engine.py` oluştur — model indirmeden test et (embedding'i mock'la ya da
+     sadece saf fonksiyonları test et): `search_scores`'a elle verilmiş küçük numpy dizileriyle
+     sıralamanın doğru çıktığını doğrula.
+  3. `requirements-dev.txt`: `pytest`, `ruff`.
+  4. `.github/workflows/ci.yml`:
+     ```yaml
+     name: CI
+     on: [push, pull_request]
+     jobs:
+       test:
+         runs-on: ubuntu-latest
+         steps:
+           - uses: actions/checkout@v4
+           - uses: actions/setup-python@v5
+             with: { python-version: "3.11" }
+           - run: pip install pandas numpy pytest ruff
+           - run: ruff check src/ tests/
+           - run: pytest tests/ -v
+     ```
+     (Bilinçli karar: CI'da sentence-transformers/umap KURMA — ağır; sadece saf mantık test edilir.)
+  5. README'ye CI badge ekle: `![CI](https://github.com/erkinavcii/SematicGalaxyContext/actions/workflows/ci.yml/badge.svg)`
+- **Kabul kriteri**: Lokalde `pytest tests/ -v` yeşil; GitHub'da Actions sekmesinde workflow yeşil.
+- **Süre**: 45-60 dk
+
+---
+
+### Görev 4: CSV → SQLite geçişi
+
+- **Neden**: Bilinçli karar — SQLite seçildi (Postgres değil: tek kullanıcı, sunucusuz, tek dosya;
+  JSON değil: tip güvenliği + SQL sorgu gücü + embedding BLOB saklama imkânı).
+  CSV'nin sorunları: eşzamanlı yazmada bozulma riski, tip kaybı, embedding saklayamama.
+- **Bağımlılık**: Görev 2 ve 3 (veri katmanı izole ve test edilebilir olmalı)
+- **Adımlar**:
+  1. `src/data.py`'ye sqlite3 tabanlı katman ekle (`DB_FILE = "galaxy.db"`):
+     ```sql
+     CREATE TABLE IF NOT EXISTS bookmarks (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         baslik TEXT NOT NULL,
+         link TEXT DEFAULT '',
+         aciklama TEXT NOT NULL,
+         tags TEXT DEFAULT 'genel',
+         embedding BLOB,            -- np.float32 bytes; np.frombuffer ile geri okunur
+         created_at TEXT DEFAULT (datetime('now'))
+     );
+     ```
+  2. Fonksiyonlar: `init_db()`, `get_all() -> pd.DataFrame` (`pd.read_sql`),
+     `add_bookmark(baslik, link, aciklama, tags, embedding: np.ndarray | None)`,
+     `update_bookmarks(df)` (editör kaydı için: sil + toplu insert kabul edilebilir),
+     `migrate_from_csv()` — `data.csv` varsa ve tablo boşsa satırları aktarır.
+  3. Uygulama açılışında `init_db(); migrate_from_csv()` çağır. `data.csv`'yi repo'da bırak
+     (ilk tohum verisi olarak), ama `galaxy.db`'yi `.gitignore`'a ekle.
+  4. Yedekleme butonları çalışmaya devam etmeli: indirme `get_all().to_csv()`, yükleme ise
+     CSV'yi okuyup tabloyu değiştirir.
+- **Kabul kriteri**: Uygulama açılır, mevcut CSV verisi otomatik migrate olur, kayıt
+  ekleme/silme/düzenleme çalışır, `pytest` yeşil kalır. `galaxy.db` git'e girmez.
+- **Süre**: 60 dk (gerekirse "şema+migrasyon" ve "UI bağlama" diye ikiye böl)
+
+---
+
+### Görev 5: Artımlı embedding (her eklemede her şeyi yeniden hesaplama)
+
+- **Neden**: Şu an 1 kayıt eklemek tüm veri setinin embedding'ini + UMAP'i sıfırdan hesaplatıyor;
+  500+ kayıtta her ekleme 10+ saniye olur. Ayrıca UMAP her seferinde yeniden fit edildiği için
+  harita tamamen değişiyor ve kullanıcının uzamsal hafızası sıfırlanıyor.
+- **Bağımlılık**: Görev 4 (embedding'ler DB'de saklanabilmeli)
+- **Adımlar**:
+  1. `add_bookmark` çağrılırken sadece YENİ kaydın embedding'ini hesapla
+     (`model.encode([aciklama + ". " + tags], normalize_embeddings=True)`) ve BLOB olarak yaz.
+  2. `compute_embeddings` artık DB'den hazır embedding'leri okur; embedding'i NULL olan
+     satırlar için (düzenlenmiş kayıtlar) yeniden hesaplayıp DB'ye geri yazar.
+     Düzenleme kaydında değişen satırların embedding kolonunu NULL'a çek.
+  3. UMAP: her açılışta yeniden fit etmek yerine fit edilmiş modeli `joblib.dump` ile
+     `umap_model.joblib`'e kaydet; yeni kayıtları `umap_model.transform(new_embeddings)` ile
+     mevcut haritaya yerleştir. Kayıt sayısı son fit'ten beri %20'den fazla arttıysa yeniden fit et
+     (eşik bilinçli karar: harita stabilitesi vs güncellik dengesi). `umap_model.joblib` .gitignore'a.
+- **Kabul kriteri**: Yeni kayıt eklemek 2 saniyeden kısa sürmeli (model yüklü haldeyken) ve
+  mevcut noktaların 3D konumu değişmemeli. Kayıt düzenlenince araması güncel içeriğe göre çalışmalı.
+- **Süre**: 60 dk
+
+---
+
+### Görev 6: 3D haritada küme tabanlı renklendirme
+
+- **Neden**: Şu an renk `Tags` string'inin TAMAMINA göre: "ai, ses" ile "ai, görsel" ayrı renk
+  alıyor; tag kombinasyonu arttıkça legend patlıyor. Bilinçli karar: KMeans yerine ilk adımda
+  **ilk tag'e göre** renklendirme (basit, açıklanabilir); kümeleme ayrı bir "keşif" özelliği olarak sonra.
+- **Bağımlılık**: yok (Görev 2 yapıldıysa `app.py`'deki 3D grafik bloğunda)
+- **Adımlar**:
+  1. 3D grafik bloğunda (`px.scatter_3d` çağrısından önce, `app.py` satır ~318 civarı) ekle:
+     ```python
+     plot_df = filtered_df.copy()
+     plot_df['AnaEtiket'] = plot_df['Tags'].astype(str).str.split(',').str[0].str.strip()
+     ```
+  2. `px.scatter_3d(...)` çağrısında `filtered_df` → `plot_df`, `color='Tags'` → `color='AnaEtiket'`.
+     `hover_data`'da `Tags: True` kalsın (tam etiketler hover'da görünmeye devam etsin).
+- **Kabul kriteri**: Legend'da kombinasyonlar değil tekil ana etiketler görünmeli;
+  hover'da tam tag listesi hâlâ görünmeli.
+- **Süre**: 15 dk
+
+---
+
+### Görev 7: Sürümleri sabitle
+
+- **Neden**: `sentence-transformers>=2.7.0` açık uçlu; deploy her seferinde farklı sürüm
+  çekebilir ve bir gün sessizce kırılır. Bilinçli karar: Streamlit Cloud'un O AN kurduğu
+  sürüme sabitle (tahmin etme).
+- **Bağımlılık**: yok — ama Görev 1-6'dan SONRA yap ki sabitlenen ortam son halin olsun.
+- **Adımlar**:
+  1. Streamlit Cloud'da app'i aç → "Manage app" → loglardan kurulmuş sürümleri oku
+     (veya app içine geçici `st.caption(sentence_transformers.__version__)` koyup oku, sonra sil).
+  2. `requirements.txt`'te `sentence-transformers>=2.7.0` satırını okunan sürümle
+     `sentence-transformers==X.Y.Z` olarak sabitle. Diğer paketler zaten sabit.
+- **Kabul kriteri**: Reboot sonrası deploy loglarında tam o sürümün kurulduğu görünmeli, app açılmalı.
+- **Süre**: 15 dk
+
+---
+
+### Görev 8: İngilizce README (iki dilli yapı)
+
+- **Neden**: Uluslararası başvurularda Türkçe README engel. Bilinçli karar: Türkçe'yi silme,
+  `README.md` İngilizce olsun (GitHub varsayılanı), Türkçe `README.tr.md`'ye taşınsın.
+- **Bağımlılık**: yok (içerik değişiklikleri bittikten sonra en son yap)
+- **Adımlar**:
+  1. Mevcut `README.md`'yi `README.tr.md` olarak kopyala.
+  2. `README.md`'yi İngilizce'ye çevir (aynı yapı: badges, screenshots, problem/solution,
+     features, tech stack, setup). En üste dil linkleri: `🇬🇧 English | [🇹🇷 Türkçe](README.tr.md)`.
+  3. Ekran görüntüsü yolları aynı kalır (`screenshots/`).
+- **Kabul kriteri**: GitHub repo ana sayfası İngilizce açılmalı, TR link çalışmalı,
+  tüm görseller iki dosyada da görünmeli.
+- **Süre**: 45 dk
+
+---
+
+## Bilinçli olarak YAPILMAYACAKLAR (kararlar)
+
+Executor bunları önerirse reddet — kararı verilmiş konulardır:
+- **Postgres/Supabase'e geçiş**: Tek kullanıcılı hobi projesi için aşırı; SQLite yeterli (Görev 4).
+- **React/Next.js frontend**: Streamlit bu projenin ölçeği için doğru; yeniden yazım değer katmaz.
+- **Repo adını değiştirmek** ("Sematic" yazım hatası): Canlı deploy URL'si ve CV linkleri kırılır;
+  düzeltme maliyeti faydasından büyük. README'de doğru yazım ("Semantic Galaxy") zaten kullanılıyor.
+- **CI'da tam ML pipeline testi**: sentence-transformers + umap kurulumu CI'ı 10+ dk'ya çıkarır;
+  saf mantık testleri yeterli sinyal verir.
