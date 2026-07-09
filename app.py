@@ -14,7 +14,14 @@ st.set_page_config(page_title="My Semantic Brain", layout="wide")
 # --- 1. MODELİ YÜKLE ---
 @st.cache_resource
 def load_model():
-    return SentenceTransformer('all-MiniLM-L6-v2')
+    # Çok dilli model Türkçe açıklamalarda çok daha iyi sonuç verir.
+    # İndirilemezse (ağ/SSL kısıtı) cache'teki İngilizce modele düşülür.
+    try:
+        return SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+    except Exception:
+        st.warning("⚠️ Çok dilli model indirilemedi; cache'teki all-MiniLM-L6-v2 kullanılıyor (Türkçe arama kalitesi düşük olabilir).")
+        # local_files_only: ağa hiç çıkmadan HF cache'inden yükler (SSL/proxy kısıtlarında da çalışır)
+        return SentenceTransformer('all-MiniLM-L6-v2', local_files_only=True)
 
 model = load_model()
 
@@ -45,7 +52,7 @@ def load_stopwords():
             with open("stopwords.txt", "r", encoding="utf-8") as f:
                 file_stops = set(f.read().splitlines())
             return file_stops
-        except:
+        except OSError:
             return default_stops
     return default_stops
 
@@ -78,7 +85,7 @@ def process_embeddings(dataframe):
     dataframe['Aciklama'] = dataframe['Aciklama'].fillna('')
     dataframe['Tags'] = dataframe['Tags'].fillna('')
     combined_text = dataframe['Aciklama'] + ". " + dataframe['Tags']
-    embeddings = model.encode(combined_text.tolist())
+    embeddings = model.encode(combined_text.tolist(), normalize_embeddings=True)
     
     n_neighbors = min(15, len(dataframe) - 1) 
     if n_neighbors < 2: n_neighbors = 2
@@ -128,8 +135,8 @@ with st.sidebar:
         if new_desc and not df.empty:
             all_existing_tags = get_unique_tags(df)
             if all_existing_tags:
-                desc_vec = model.encode([new_desc])
-                tags_vec = model.encode(all_existing_tags)
+                desc_vec = model.encode([new_desc], normalize_embeddings=True)
+                tags_vec = model.encode(all_existing_tags, normalize_embeddings=True)
                 sims = np.dot(tags_vec, desc_vec.T).flatten()
                 
                 top_indices = np.argsort(sims)[::-1][:5]
@@ -252,7 +259,7 @@ with tab1:
         display_df = filtered_df.copy()
         
         if query_text_for_model:
-            query_vec = model.encode([query_text_for_model])
+            query_vec = model.encode([query_text_for_model], normalize_embeddings=True)
             full_sim_scores = np.dot(embeddings, query_vec.T).flatten()
             df['Benzerlik'] = full_sim_scores
             display_df['Benzerlik'] = df.loc[display_df.index, 'Benzerlik']
@@ -274,7 +281,8 @@ with tab1:
         
         if not results.empty:
             if 'Benzerlik' in results.columns and query_text_for_model:
-                min_s, max_s = results['Benzerlik'].min(), results['Benzerlik'].max()
+                # Normalizasyon tüm sonuç kümesi üzerinden; sayfa değişince bar oranları kaymaz
+                min_s, max_s = display_df['Benzerlik'].min(), display_df['Benzerlik'].max()
                 denom = max_s - min_s
             else:
                 denom = 1 
