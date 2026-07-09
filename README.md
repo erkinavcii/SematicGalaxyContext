@@ -1,6 +1,8 @@
 # 🌌 Semantic Galaxy
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://sematicgalaxycontext-ysbtyhl4rqg7ijsja43fs4.streamlit.app/)
+
+> ⚠️ **Demo notu**: Streamlit Cloud'un dosya sistemi geçicidir — canlı demoda eklenen/silinen kayıtlar uygulama yeniden başladığında repo'daki `data.csv`'ye döner. Kalıcı kullanım için projeyi lokal çalıştırın.
 ![Version](https://img.shields.io/badge/version-0.8.1-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-green)
 
@@ -78,7 +80,7 @@
 - ✅ **Validasyon**: NaN handling, boş değer kontrolü
 
 ### 🧠 ML Pipeline
-- ✅ **sentence-transformers**: all-MiniLM-L6-v2 model (384D)
+- ✅ **sentence-transformers**: paraphrase-multilingual-MiniLM-L12-v2 model (384D, Türkçe destekli)
 - ✅ **Tag-aware embeddings**: Description + tags birlikte
 - ✅ **UMAP**: 384D → 3D konumlama
 - ✅ **Cosine similarity**: Semantik benzerlik
@@ -223,11 +225,11 @@ bu
 
 ### Embedding Modeli Değiştir
 ```python
-# app.py satır 13
-model = SentenceTransformer('all-MiniLM-L6-v2')  # İngilizce
-
-# Türkçe için:
+# app.py (load_model içinde) — varsayılan: çok dilli, Türkçe destekli
 model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
+# Sadece İngilizce veri için daha hafif alternatif:
+model = SentenceTransformer('all-MiniLM-L6-v2')
 ```
 
 ### UMAP Parametreleri
