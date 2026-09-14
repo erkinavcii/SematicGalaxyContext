@@ -30,6 +30,8 @@ indirilemez; kodda `local_files_only` fallback var, uygulama cache'teki modelle 
 Streamlit Cloud'da sorun yok. Kalıcı çözüm: farklı ağda bir kez
 `python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"`
 çalıştırıp modeli cache'e almak.
+> **Güncelleme 2026-09-14**: Sorun geçiciymiş; aynı makineden huggingface.co model dosyası uç noktası 200 döndü.
+> Yukarıdaki komut artık bu makinede de çalışmalı (~470MB indirir).
 
 ---
 
@@ -40,11 +42,20 @@ Bu düzeltmeler rapor yazılırken uygulandı, doğrulandı ve commit'lendi:
 | Değişiklik | Commit | Doğrulama |
 |---|---|---|
 | Çok dilli modele geçiş (`paraphrase-multilingual-MiniLM-L12-v2`) + indirilemezse cache'teki `all-MiniLM-L6-v2`'ye `local_files_only=True` fallback | `07e9771` | Fallback lokalde tetiklenip model yüklendi; AppTest ile uygulama 0 exception ile çalıştı |
-| Tüm `model.encode` çağrılarına `normalize_embeddings=True` — dot product artık gerçek cosine similarity | `07e9771` | Vektör normları 1.0000 ölçüldü |
+| Tüm `model.encode` çağrılarına `normalize_embeddings=True` — yeni modelde `np.dot` skorunun kosinüs olması için şart | `07e9771` | Vektör normları 1.0000 ölçüldü |
 | Benzerlik bar normalizasyonu sayfa dilimi (`results`) yerine tüm sonuç kümesi (`display_df`) üzerinden — "Daha Fazla Göster" dedikçe barlar kaymaz | `07e9771` | Kod incelemesi |
 | `load_stopwords` içindeki çıplak `except:` → `except OSError:` | `07e9771` | Kod incelemesi |
 | README: model bilgisi güncellendi + "demo verisi kalıcı değildir" uyarısı eklendi | `487258d` | — |
 
+> **Düzeltme (2026-09-14)**: İlk raporda "eski kod kosinüs hesaplamıyordu" denmişti; **yanlıştı**. Eski
+> `all-MiniLM-L6-v2` modelinin `modules.json`'unda `Normalize` katmanı var (normalize parametresi olmadan da
+> normlar 1.0 ölçüldü). Yeni `paraphrase-multilingual-MiniLM-L12-v2`'de bu katman **yok**; bu yüzden değişiklik
+> yeni model için gerekliydi. Commit `07e9771` mesajındaki gerekçe de bu açıdan eksik.
+>
+> **Canlı doğrulama (2026-09-14)**: Streamlit Cloud demosu (GitHub `master`'dan otomatik deploy) uykudan
+> uyandırıldı; yeni modelle hatasız açıldı, yedek model uyarısı çıkmadı, "bilgisayar oyunu yapmak istiyorum"
+> araması Unreal Engine (0.66) ve Unity (0.64) sonuçlarını getirdi.
+>
 > **Not**: Streamlit Cloud ilk deploy'da yeni modeli (~470MB) indirecek; ilk açılış birkaç dakika
 > sürebilir, sonrası normaldir. Model 384D çıktı verdiği için UMAP/arama kodu değişikliği gerekmedi.
 
@@ -64,9 +75,16 @@ Görevler **bağımlılık sırasına** göredir. Her görev kendi kendine yeter
 - **Adımlar**:
   1. `app.py` içinde `DATA_FILE = "data.csv"` satırının (satır ~60) hemen altına ekle:
      ```python
+     def secret(key, default=""):
+         # Streamlit 1.30: secrets.toml yokken st.secrets erişimi FileNotFoundError fırlatır (2026-09-14'te doğrulandı)
+         try:
+             return st.secrets.get(key, default)
+         except FileNotFoundError:
+             return default
+
      def is_admin():
          # Parola tanımlı değilse (lokal kullanım) herkes admindir
-         expected = st.secrets.get("admin_password", "")
+         expected = secret("admin_password")
          if not expected:
              return True
          entered = st.session_state.get("admin_pw_input", "")
@@ -74,7 +92,7 @@ Görevler **bağımlılık sırasına** göredir. Her görev kendi kendine yeter
      ```
   2. Sidebar'da `st.header("🏷️ Filtrele")` satırının üstüne ekle:
      ```python
-     if st.secrets.get("admin_password", ""):
+     if secret("admin_password"):
          st.text_input("🔑 Yönetici Parolası", type="password", key="admin_pw_input")
      ```
   3. Şu üç yazma noktasını `if not is_admin(): st.error("Bu işlem için yönetici parolası gerekli."); st.stop()` benzeri korumayla sarmala (buton bloklarının en başına koy):
@@ -99,6 +117,9 @@ Görevler **bağımlılık sırasına** göredir. Her görev kendi kendine yeter
   2. `src/data.py` oluştur — `app.py`'den şunları **aynen taşı** (streamlit import'u OLMASIN):
      `clean_tags` (st.cache_data dekoratörünü SİL, gerek yok), `get_unique_tags`,
      `load_stopwords` (st.cache_data'yı sil), `DATA_FILE`, `load_data`.
+     **Tek istisna, bilinen hatayı taşırken düzelt**: `clean_tags("ai, , ses")` şu an `", ai, ses"` döndürüyor.
+     `tags = [t.strip().lower() for t in tag_str.split(',')]` → `tags = [t.strip().lower() for t in tag_str.split(',') if t.strip()]`
+     ve sonuç boş kalırsa `"genel"` döndür.
   3. `src/engine.py` oluştur — şunları taşı: `load_model` içindeki model yükleme mantığı
      (`get_model()` adıyla, st.warning yerine `logging.warning` + fallback aynı kalsın),
      `process_embeddings`'in gövdesi (`compute_embeddings(df, model)` adıyla, cache dekoratörsüz),
@@ -138,6 +159,8 @@ Görevler **bağımlılık sırasına** göredir. Her görev kendi kendine yeter
 
      def test_clean_tags_normalizes():
          assert clean_tags("  AI , ses, AI ") == "ai, ses"
+         assert clean_tags("ai, , ses") == "ai, ses"
+         assert clean_tags(" , ") == "genel"
 
      def test_clean_tags_empty_returns_genel():
          assert clean_tags("") == "genel"
@@ -175,6 +198,10 @@ Görevler **bağımlılık sırasına** göredir. Her görev kendi kendine yeter
 ---
 
 ### Görev 4: CSV → SQLite geçişi
+
+> ⚠️ **2026-09-14 revizyonu**: `PLAN_ETKILESIM.md` Faz 2 (Telegram botu) uygulanacaksa bu görevi **ATLA**.
+> Bot ve Streamlit farklı süreçlerde çalışacağı için yerel SQLite paylaşılamaz; yerine PLAN_ETKILESIM.md
+> P2.1-P2.3 (Supabase) uygulanır. Gerekçe: PLAN_ETKILESIM.md K3-K4. Faz 2 hiç yapılmayacaksa bu görev geçerlidir.
 
 - **Neden**: Bilinçli karar — SQLite seçildi (Postgres değil: tek kullanıcı, sunucusuz, tek dosya;
   JSON değil: tip güvenliği + SQL sorgu gücü + embedding BLOB saklama imkânı).
@@ -231,6 +258,8 @@ Görevler **bağımlılık sırasına** göredir. Her görev kendi kendine yeter
 
 ### Görev 6: 3D haritada küme tabanlı renklendirme
 
+> ℹ️ `PLAN_ETKILESIM.md` P1.4 bu görevi kapsar (ana etiket + kaynak renk seçimi). P1.4 yapılacaksa bunu ayrıca yapma.
+
 - **Neden**: Şu an renk `Tags` string'inin TAMAMINA göre: "ai, ses" ile "ai, görsel" ayrı renk
   alıyor; tag kombinasyonu arttıkça legend patlıyor. Bilinçli karar: KMeans yerine ilk adımda
   **ilk tag'e göre** renklendirme (basit, açıklanabilir); kümeleme ayrı bir "keşif" özelliği olarak sonra.
@@ -284,7 +313,9 @@ Görevler **bağımlılık sırasına** göredir. Her görev kendi kendine yeter
 ## Bilinçli olarak YAPILMAYACAKLAR (kararlar)
 
 Executor bunları önerirse reddet — kararı verilmiş konulardır:
-- **Postgres/Supabase'e geçiş**: Tek kullanıcılı hobi projesi için aşırı; SQLite yeterli (Görev 4).
+- ~~**Postgres/Supabase'e geçiş**: Tek kullanıcılı hobi projesi için aşırı; SQLite yeterli (Görev 4).~~
+  **Revize edildi (2026-09-14)**: Bu karar tek süreçli kullanım varsayımına dayanıyordu. Telegram botuyla
+  çok kanallı yakalama (PLAN_ETKILESIM.md Faz 2) başlarsa Supabase kullanılır (PLAN_ETKILESIM.md K4).
 - **React/Next.js frontend**: Streamlit bu projenin ölçeği için doğru; yeniden yazım değer katmaz.
 - **Repo adını değiştirmek** ("Sematic" yazım hatası): Canlı deploy URL'si ve CV linkleri kırılır;
   düzeltme maliyeti faydasından büyük. README'de doğru yazım ("Semantic Galaxy") zaten kullanılıyor.
