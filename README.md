@@ -5,6 +5,7 @@
 > ⚠️ **Demo notu**: Streamlit Cloud'un dosya sistemi geçicidir — canlı demoda eklenen/silinen kayıtlar uygulama yeniden başladığında repo'daki `data.csv`'ye döner. Kalıcı kullanım için projeyi lokal çalıştırın.
 ![Version](https://img.shields.io/badge/version-0.8.1-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-green)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 > 3D semantik bookmark görselleştirme ve akıllı arama sistemi.
 
@@ -287,7 +288,9 @@ min_dist = 0.1  # Nokta mesafesi (kodu içinde hardcoded)
 
 ## 📝 Lisans
 
-Kişisel kullanım. Ticari için iletişim.
+[MIT License](LICENSE) — © 2025-2026 Ali Erkin Avcı
+
+Telif bildirimini koruduğun sürece kişisel ve ticari olarak özgürce kullanabilir, değiştirebilir ve dağıtabilirsin.
 
 ---
 
